@@ -3,16 +3,19 @@
 # a release to age before proposing it, so a compromised release has time to be
 # caught and yanked upstream first.
 #
-# The pip ecosystem covers pyproject.toml and the hash-pinned
-# requirements-{dev,build,audit}.txt files compiled from their .in files: a
-# version bump regenerates the compiled file (pins and hashes), which is what
-# CI and the release build install with --require-hashes.
+# pip is security-only (open-pull-requests-limit: 0 stops version-update
+# pull requests; security updates are not limited by it). Dependabot recompiles
+# the hash-pinned requirements-{dev,build,audit}.txt files without uv's
+# --universal, which drops the platform-specific pins (colorama on Windows) and
+# breaks the Windows install. Version bumps are made by hand with the uv
+# command in each .in file's header.
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
     cooldown:
       default-days: 7
     groups:

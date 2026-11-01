@@ -44,7 +44,10 @@ uv pip compile requirements-dev.in --universal --python-version 3.11 \
 `requirements-build.txt` (the release build chain) and `requirements-audit.txt`
 (`pip-audit`) work the same way. CI and the release build install only these
 hash-pinned files, so a newly published release of a tool never runs in CI
-before Dependabot proposes it (after a 7-day cooldown) and a reviewer merges it.
+until a maintainer recompiles the file and a reviewer merges it. Dependabot
+opens pip pull requests for security advisories only: its own recompile drops
+uv's `--universal` platform markers (colorama on Windows), so version bumps are
+made by hand with the command above (`--upgrade-package <name>` for one tool).
 
 No network access is required to run the tests — the suite mocks `httpx`
 transports, so `pytest` is fully offline and deterministic.
