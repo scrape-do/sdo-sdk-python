@@ -1,0 +1,4 @@
+# Every text file is checked out with LF on every platform: Windows runners
+# would otherwise convert the checkout to CRLF, which breaks byte-exact
+# goldens (the sha256-checked conformance corpus, api-surface.txt) and gofmt.
+* text=auto eol=lf
