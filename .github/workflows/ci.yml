@@ -108,11 +108,11 @@ jobs:
       security-events: write
     steps:
       # The persistent runners may still hold root-owned files that an older,
-      # container-based job left in this workspace; reclaim them before the
-      # checkout cleans it.
+      # container-based job left in this workspace or in the runner's temp
+      # directory (CodeQL writes its PR diff range there); reclaim both.
       - name: Reclaim the workspace
         working-directory: ${{ github.workspace }}
-        run: docker run --rm -v "$PWD:/w" golang:1.27 chown -R "$(id -u):$(id -g)" /w
+        run: docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP:/t" golang:1.27 chown -R "$(id -u):$(id -g)" /w /t
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
