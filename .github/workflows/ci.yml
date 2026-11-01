@@ -1,0 +1,130 @@
+# SPDX-License-Identifier: Apache-2.0
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege by default; jobs opt in to what they need.
+permissions: {}
+
+# Every job runs on GitHub-hosted runners: free for a public repository, a
+# clean image every time, and no code from outside the org ever reaches the
+# org's persistent self-hosted runners. CodeQL is the one exception: uploading
+# its results is a GitHub API call, which the org's IP allow list only accepts
+# from the self-hosted runners, so same-repository events analyse there; a pull
+# request from a fork analyses on a GitHub-hosted runner and keeps its SARIF as
+# an artifact instead.
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      # Every tool is pinned with a hash (requirements-dev.txt); the package
+      # itself is installed without resolving anything else.
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: python -m pip install --no-deps --no-build-isolation -e .
+      - run: ruff check src tests tools
+      - run: ruff format --check src tests tools
+
+  typecheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: python -m pip install --no-deps --no-build-isolation -e .
+      # mypy --strict over src/sdo (configured in pyproject.toml): the package
+      # ships py.typed, so its annotations are part of the contract.
+      - run: mypy
+
+  test:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        include:
+          - { os: macos-latest, python-version: "3.13" }
+          - { os: windows-latest, python-version: "3.13" }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: python -m pip install --no-deps --no-build-isolation -e .
+      - run: python -m pytest --cov=sdo --cov-report=term-missing --cov-branch --cov-fail-under=99
+
+  # Public-API drift gate: regenerate the golden and fail if it differs from the
+  # committed api-surface.txt. Any add/remove/rename/signature change to the
+  # public surface must be accompanied by a regenerated golden.
+  api-surface:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --require-hashes -r requirements-dev.txt
+      - run: python -m pip install --no-deps --no-build-isolation -e .
+      - name: Regenerate the public API surface
+        run: python tools/api_surface.py > api-surface.txt
+      - name: Fail if the public API changed without updating the golden
+        run: |
+          git diff --exit-code api-surface.txt \
+            || (echo "::error::public API changed — regenerate api-surface.txt (python tools/api_surface.py > api-surface.txt) and commit" && exit 1)
+
+  codeql:
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      # The persistent runners may still hold root-owned files that an older,
+      # container-based job left in this workspace; reclaim them before the
+      # checkout cleans it.
+      - name: Reclaim the workspace
+        if: runner.environment == 'self-hosted'
+        working-directory: ${{ github.workspace }}
+        run: docker run --rm -v "$PWD:/w" golang:1.27 chown -R "$(id -u):$(id -g)" /w
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: python
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          upload: ${{ runner.environment == 'self-hosted' && 'always' || 'never' }}
+          output: codeql-sarif
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: runner.environment != 'self-hosted'
+        with:
+          name: codeql-sarif
+          path: codeql-sarif/

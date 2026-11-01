@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# Keeps pip dependencies and SHA-pinned actions current. The cooldown waits for
+# a release to age before proposing it, so a compromised release has time to be
+# caught and yanked upstream first.
+#
+# The pip ecosystem covers pyproject.toml and the hash-pinned
+# requirements-{dev,build,audit}.txt files compiled from their .in files: a
+# version bump regenerates the compiled file (pins and hashes), which is what
+# CI and the release build install with --require-hashes.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      # hatchling is pinned in pyproject.toml [build-system] and in two
+      # requirement files; tests/test_api_surface.py fails until they agree.
+      build-backend:
+        patterns: ["hatchling"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]

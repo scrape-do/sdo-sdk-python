@@ -1,0 +1,12 @@
+# The release build chain, compiled with hashes into requirements-build.txt:
+#
+#   uv pip compile requirements-build.in --universal --python-version 3.11 \
+#       --generate-hashes -o requirements-build.txt
+#
+# publish.yml installs it with --require-hashes and builds with
+# `python -m build --no-isolation`, so nothing unpinned runs next to dist/.
+
+build>=1.2
+# keep in step with pyproject.toml [build-system]
+hatchling==1.32.4
+twine>=6.1

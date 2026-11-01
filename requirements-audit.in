@@ -1,0 +1,7 @@
+# The dependency auditor used by security.yml, compiled with hashes into
+# requirements-audit.txt:
+#
+#   uv pip compile requirements-audit.in --universal --python-version 3.11 \
+#       --generate-hashes -o requirements-audit.txt
+
+pip-audit>=2.9

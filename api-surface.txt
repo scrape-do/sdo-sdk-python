@@ -1,0 +1,401 @@
+# sdo public API surface — one owner-qualified entry per line (see tools/api_surface.py).
+# Generated; do not edit. Regenerate: python tools/api_surface.py > api-surface.txt
+attr Account.active_jobs: int | None
+attr Account.available_credits: int | None
+attr Account.free_concurrency: int | None
+attr Account.total_concurrency: int | None
+attr Job.job_id: str | None
+attr Job.message: str | None
+attr Job.task_ids: list[str]
+attr JobStatus.canceled: bool
+attr JobStatus.end_time: str | None
+attr JobStatus.job_id: str | None
+attr JobStatus.start_time: str | None
+attr JobStatus.status: str | None
+attr JobStatus.task_ids: list[str]
+attr JobStatus.tasks: list[Task]
+attr ScrapeConfig.block_resources: bool | None
+attr ScrapeConfig.custom_headers: bool | None
+attr ScrapeConfig.custom_wait: int | None
+attr ScrapeConfig.device: str | None
+attr ScrapeConfig.disable_redirection: bool | None
+attr ScrapeConfig.disable_retry: bool | None
+attr ScrapeConfig.extra_headers: bool | None
+attr ScrapeConfig.extra_params: dict[str, Any] | None
+attr ScrapeConfig.forward_headers: bool | None
+attr ScrapeConfig.full_screenshot: bool | None
+attr ScrapeConfig.geo_code: str | None
+attr ScrapeConfig.headers: dict[str, str] | None
+attr ScrapeConfig.height: int | None
+attr ScrapeConfig.output: str | None
+attr ScrapeConfig.particular_screenshot: str | None
+attr ScrapeConfig.play_with_browser: list[dict[str, Any]] | None
+attr ScrapeConfig.pure_cookies: bool | None
+attr ScrapeConfig.regional_geo_code: str | None
+attr ScrapeConfig.render: bool | str | None
+attr ScrapeConfig.retry_timeout: int | None
+attr ScrapeConfig.return_json: bool | None
+attr ScrapeConfig.screenshot: bool | None
+attr ScrapeConfig.session_id: int | str | None
+attr ScrapeConfig.set_cookies: str | None
+attr ScrapeConfig.show_frames: bool | None
+attr ScrapeConfig.show_websocket_requests: bool | None
+attr ScrapeConfig.super_proxy: bool | None
+attr ScrapeConfig.timeout: int | None
+attr ScrapeConfig.transparent_response: bool | None
+attr ScrapeConfig.url: str
+attr ScrapeConfig.wait_selector: str | None
+attr ScrapeConfig.wait_until: str | None
+attr ScrapeConfig.width: int | None
+attr ScrapeConfig.zip_code: str | None
+attr ScrapeResult.headers: dict[str, str]
+attr ScrapeResult.status_code: int
+attr ScrapeResult.url: str
+attr SdoAPIError.billed: bool
+attr SdoAPIError.body: str | None
+attr SdoAPIError.cost: int | None
+attr SdoAPIError.is_retryable: bool
+attr SdoAPIError.message: str
+attr SdoAPIError.retry_after: int | None
+attr SdoAPIError.status_code: int
+attr SdoAuthError.billed: bool
+attr SdoAuthError.body: str | None
+attr SdoAuthError.cost: int | None
+attr SdoAuthError.is_retryable: bool
+attr SdoAuthError.message: str
+attr SdoAuthError.retry_after: int | None
+attr SdoAuthError.status_code: int
+attr SdoConcurrencyError.billed: bool
+attr SdoConcurrencyError.body: str | None
+attr SdoConcurrencyError.cost: int | None
+attr SdoConcurrencyError.is_retryable: bool
+attr SdoConcurrencyError.message: str
+attr SdoConcurrencyError.remaining_credits: int | None
+attr SdoConcurrencyError.retry_after: int | None
+attr SdoConcurrencyError.status_code: int
+attr SdoConfigError.message: str
+attr SdoConnectionError.message: str
+attr SdoError.message: str
+attr SdoGatewayError.billed: bool
+attr SdoGatewayError.body: str | None
+attr SdoGatewayError.cost: int | None
+attr SdoGatewayError.is_retryable: bool
+attr SdoGatewayError.message: str
+attr SdoGatewayError.retry_after: int | None
+attr SdoGatewayError.status_code: int
+attr SdoResponseTooLargeError.limit: int
+attr SdoResponseTooLargeError.message: str
+attr SdoTimeoutError.message: str
+attr SdoTransportError.message: str
+attr SdoValidationError.billed: bool
+attr SdoValidationError.body: str | None
+attr SdoValidationError.cost: int | None
+attr SdoValidationError.is_retryable: bool
+attr SdoValidationError.message: str
+attr SdoValidationError.retry_after: int | None
+attr SdoValidationError.status_code: int
+attr Task.status: str | None
+attr Task.task_id: str | None
+attr Task.url: str | None
+attr TaskResult.base64_encoded_content: bool
+attr TaskResult.content: str | None
+attr TaskResult.end_time: str | None
+attr TaskResult.error_message: str | None
+attr TaskResult.expires_at: str | None
+attr TaskResult.job_id: str | None
+attr TaskResult.response_headers: dict[str, str] | None
+attr TaskResult.scrape_do: dict[str, str] | None
+attr TaskResult.start_time: str | None
+attr TaskResult.status: str | None
+attr TaskResult.status_code: int | None
+attr TaskResult.task_id: str | None
+attr TaskResult.update_time: str | None
+attr TaskResult.url: str | None
+attr Usage.concurrent_request: int
+attr Usage.is_active: bool
+attr Usage.max_monthly_request: int
+attr Usage.remaining_concurrent_request: int
+attr Usage.remaining_monthly_request: int
+base SdoAPIError Exception
+base SdoAPIError SdoError
+base SdoAuthError Exception
+base SdoAuthError SdoAPIError
+base SdoAuthError SdoError
+base SdoConcurrencyError Exception
+base SdoConcurrencyError SdoAPIError
+base SdoConcurrencyError SdoError
+base SdoConfigError Exception
+base SdoConfigError SdoError
+base SdoConnectionError Exception
+base SdoConnectionError SdoError
+base SdoConnectionError SdoTransportError
+base SdoError Exception
+base SdoGatewayError Exception
+base SdoGatewayError SdoAPIError
+base SdoGatewayError SdoError
+base SdoResponseTooLargeError Exception
+base SdoResponseTooLargeError SdoError
+base SdoResponseTooLargeError SdoTransportError
+base SdoTimeoutError Exception
+base SdoTimeoutError SdoError
+base SdoTimeoutError SdoTransportError
+base SdoTransportError Exception
+base SdoTransportError SdoError
+base SdoValidationError Exception
+base SdoValidationError SdoAPIError
+base SdoValidationError SdoError
+class Account
+class AsyncJobs
+class Client
+class Job
+class JobStatus
+class ScrapeConfig
+class ScrapeResult
+class SdoAPIError
+class SdoAuthError
+class SdoConcurrencyError
+class SdoConfigError
+class SdoConnectionError
+class SdoError
+class SdoGatewayError
+class SdoResponseTooLargeError
+class SdoTimeoutError
+class SdoTransportError
+class SdoValidationError
+class Task
+class TaskResult
+class Usage
+ctor Account.__init__
+ctor AsyncJobs.__init__
+ctor Client.__init__
+ctor Job.__init__
+ctor JobStatus.__init__
+ctor ScrapeConfig.__init__
+ctor ScrapeResult.__init__
+ctor SdoAPIError.__init__
+ctor SdoAuthError.__init__
+ctor SdoConcurrencyError.__init__
+ctor SdoConfigError.__init__
+ctor SdoConnectionError.__init__
+ctor SdoError.__init__
+ctor SdoGatewayError.__init__
+ctor SdoResponseTooLargeError.__init__
+ctor SdoTimeoutError.__init__
+ctor SdoTransportError.__init__
+ctor SdoValidationError.__init__
+ctor Task.__init__
+ctor TaskResult.__init__
+ctor Usage.__init__
+data __version__: str
+export Account
+export AsyncJobs
+export Client
+export Job
+export JobStatus
+export ScrapeConfig
+export ScrapeResult
+export SdoAPIError
+export SdoAuthError
+export SdoConcurrencyError
+export SdoConfigError
+export SdoConnectionError
+export SdoError
+export SdoGatewayError
+export SdoResponseTooLargeError
+export SdoTimeoutError
+export SdoTransportError
+export SdoValidationError
+export Task
+export TaskResult
+export Usage
+export __version__
+method AsyncJobs.__enter__() -> AsyncJobs
+method AsyncJobs.__exit__() -> None
+method AsyncJobs.cancel() -> None
+method AsyncJobs.close() -> None
+method AsyncJobs.create() -> Job
+method AsyncJobs.list() -> builtins.list[JobStatus]
+method AsyncJobs.me() -> Account
+method AsyncJobs.result() -> TaskResult
+method AsyncJobs.status() -> JobStatus
+method Client.__enter__() -> Client
+method Client.__exit__() -> None
+method Client.close() -> None
+method Client.plugin() -> Any
+method Client.plugin_result() -> ScrapeResult
+method Client.scrape() -> ScrapeResult
+method Client.usage() -> Usage
+method ScrapeConfig.to_params() -> list[tuple[str, str]]
+method ScrapeConfig.validate() -> None
+method ScrapeResult.bytes() -> builtins.bytes
+method ScrapeResult.header_values() -> list[str]
+method ScrapeResult.json() -> Any
+method ScrapeResult.selector() -> Any
+method TaskResult.content_bytes() -> bytes
+param Account.__init__ active_jobs: int | None = None
+param Account.__init__ available_credits: int | None = None
+param Account.__init__ free_concurrency: int | None = None
+param Account.__init__ total_concurrency: int | None = None
+param AsyncJobs.__exit__ *exc: object
+param AsyncJobs.__init__ #0 token: str | None = None
+param AsyncJobs.__init__ allow_insecure_http: bool = False
+param AsyncJobs.__init__ base_url: str | None = None
+param AsyncJobs.__init__ http_client: httpx.Client | None = None
+param AsyncJobs.__init__ retries: int = 2
+param AsyncJobs.__init__ timeout: float | None = None
+param AsyncJobs.cancel #0 job_id: str [required]
+param AsyncJobs.create #0 targets: Sequence[str] [required]
+param AsyncJobs.create #1 options: Mapping[str, Any] | None = None
+param AsyncJobs.result #0 job_id: str [required]
+param AsyncJobs.result #1 task_id: str [required]
+param AsyncJobs.status #0 job_id: str [required]
+param Client.__exit__ *exc: object
+param Client.__init__ #0 token: str | None = None
+param Client.__init__ accept_encoding: str | None = None
+param Client.__init__ allow_insecure_http: bool = False
+param Client.__init__ async_base_url: str | None = None
+param Client.__init__ backoff_factor: float = 0.5
+param Client.__init__ base_url: str | None = None
+param Client.__init__ http_client: httpx.Client | None = None
+param Client.__init__ max_response_bytes: int = 33554432
+param Client.__init__ prefer_brotli: bool = False
+param Client.__init__ retries: int = 2
+param Client.__init__ timeout: float | None = None
+param Client.plugin #0 route: str [required]
+param Client.plugin #1 params: Mapping[str, Any] | None = None
+param Client.plugin **kwargs: Any
+param Client.plugin_result #0 route: str [required]
+param Client.plugin_result #1 params: Mapping[str, Any] | None = None
+param Client.plugin_result **kwargs: Any
+param Client.scrape #0 config: ScrapeConfig | str | None = None
+param Client.scrape **config_kwargs: Any
+param Client.scrape data: bytes | str | None = None
+param Client.scrape headers: Mapping[str, str] | None = None
+param Client.scrape json: Any | None = None
+param Client.scrape method: str | None = None
+param Client.scrape url: str | None = None
+param Job.__init__ job_id: str | None = None
+param Job.__init__ message: str | None = None
+param Job.__init__ task_ids: list[str] = <factory>
+param JobStatus.__init__ canceled: bool = False
+param JobStatus.__init__ end_time: str | None = None
+param JobStatus.__init__ job_id: str | None = None
+param JobStatus.__init__ start_time: str | None = None
+param JobStatus.__init__ status: str | None = None
+param JobStatus.__init__ task_ids: list[str] = <factory>
+param JobStatus.__init__ tasks: list[Task] = <factory>
+param ScrapeConfig.__init__ #0 url: str [required]
+param ScrapeConfig.__init__ block_resources: bool | None = None
+param ScrapeConfig.__init__ custom_headers: bool | None = None
+param ScrapeConfig.__init__ custom_wait: int | None = None
+param ScrapeConfig.__init__ device: str | None = None
+param ScrapeConfig.__init__ disable_redirection: bool | None = None
+param ScrapeConfig.__init__ disable_retry: bool | None = None
+param ScrapeConfig.__init__ extra_headers: bool | None = None
+param ScrapeConfig.__init__ extra_params: dict[str, Any] | None = None
+param ScrapeConfig.__init__ forward_headers: bool | None = None
+param ScrapeConfig.__init__ full_screenshot: bool | None = None
+param ScrapeConfig.__init__ geo_code: str | None = None
+param ScrapeConfig.__init__ headers: dict[str, str] | None = None
+param ScrapeConfig.__init__ height: int | None = None
+param ScrapeConfig.__init__ output: str | None = None
+param ScrapeConfig.__init__ particular_screenshot: str | None = None
+param ScrapeConfig.__init__ play_with_browser: list[dict[str, Any]] | None = None
+param ScrapeConfig.__init__ pure_cookies: bool | None = None
+param ScrapeConfig.__init__ regional_geo_code: str | None = None
+param ScrapeConfig.__init__ render: bool | str | None = None
+param ScrapeConfig.__init__ retry_timeout: int | None = None
+param ScrapeConfig.__init__ return_json: bool | None = None
+param ScrapeConfig.__init__ screenshot: bool | None = None
+param ScrapeConfig.__init__ session_id: int | str | None = None
+param ScrapeConfig.__init__ set_cookies: str | None = None
+param ScrapeConfig.__init__ show_frames: bool | None = None
+param ScrapeConfig.__init__ show_websocket_requests: bool | None = None
+param ScrapeConfig.__init__ super_proxy: bool | None = None
+param ScrapeConfig.__init__ timeout: int | None = None
+param ScrapeConfig.__init__ transparent_response: bool | None = None
+param ScrapeConfig.__init__ wait_selector: str | None = None
+param ScrapeConfig.__init__ wait_until: str | None = None
+param ScrapeConfig.__init__ width: int | None = None
+param ScrapeConfig.__init__ zip_code: str | None = None
+param ScrapeResult.__init__ content: bytes [required]
+param ScrapeResult.__init__ headers: Mapping[str, str] | Iterable[tuple[str, str]] [required]
+param ScrapeResult.__init__ status_code: int [required]
+param ScrapeResult.__init__ url: str [required]
+param ScrapeResult.header_values #0 name: str [required]
+param ScrapeResult.json **kwargs: Any
+param SdoAPIError.__init__ #0 message: str [required]
+param SdoAPIError.__init__ billed: bool = False
+param SdoAPIError.__init__ body: str | None = None
+param SdoAPIError.__init__ cost: int | None = None
+param SdoAPIError.__init__ is_retryable: bool = False
+param SdoAPIError.__init__ retry_after: int | None = None
+param SdoAPIError.__init__ status_code: int [required]
+param SdoAuthError.__init__ #0 message: str [required]
+param SdoAuthError.__init__ billed: bool = False
+param SdoAuthError.__init__ body: str | None = None
+param SdoAuthError.__init__ cost: int | None = None
+param SdoAuthError.__init__ is_retryable: bool = False
+param SdoAuthError.__init__ retry_after: int | None = None
+param SdoAuthError.__init__ status_code: int [required]
+param SdoConcurrencyError.__init__ #0 message: str [required]
+param SdoConcurrencyError.__init__ billed: bool = False
+param SdoConcurrencyError.__init__ body: str | None = None
+param SdoConcurrencyError.__init__ cost: int | None = None
+param SdoConcurrencyError.__init__ is_retryable: bool = False
+param SdoConcurrencyError.__init__ remaining_credits: int | None = None
+param SdoConcurrencyError.__init__ retry_after: int | None = None
+param SdoConcurrencyError.__init__ status_code: int [required]
+param SdoConfigError.__init__ #0 message: str [required]
+param SdoConnectionError.__init__ #0 message: str [required]
+param SdoError.__init__ #0 message: str [required]
+param SdoGatewayError.__init__ #0 message: str [required]
+param SdoGatewayError.__init__ billed: bool = False
+param SdoGatewayError.__init__ body: str | None = None
+param SdoGatewayError.__init__ cost: int | None = None
+param SdoGatewayError.__init__ is_retryable: bool = False
+param SdoGatewayError.__init__ retry_after: int | None = None
+param SdoGatewayError.__init__ status_code: int [required]
+param SdoResponseTooLargeError.__init__ #0 message: str [required]
+param SdoResponseTooLargeError.__init__ limit: int [required]
+param SdoTimeoutError.__init__ #0 message: str [required]
+param SdoTransportError.__init__ #0 message: str [required]
+param SdoValidationError.__init__ #0 message: str [required]
+param SdoValidationError.__init__ billed: bool = False
+param SdoValidationError.__init__ body: str | None = None
+param SdoValidationError.__init__ cost: int | None = None
+param SdoValidationError.__init__ is_retryable: bool = False
+param SdoValidationError.__init__ retry_after: int | None = None
+param SdoValidationError.__init__ status_code: int [required]
+param Task.__init__ status: str | None = None
+param Task.__init__ task_id: str | None = None
+param Task.__init__ url: str | None = None
+param TaskResult.__init__ base64_encoded_content: bool = False
+param TaskResult.__init__ content: str | None = None
+param TaskResult.__init__ end_time: str | None = None
+param TaskResult.__init__ error_message: str | None = None
+param TaskResult.__init__ expires_at: str | None = None
+param TaskResult.__init__ job_id: str | None = None
+param TaskResult.__init__ response_headers: dict[str, str] | None = None
+param TaskResult.__init__ scrape_do: dict[str, str] | None = None
+param TaskResult.__init__ start_time: str | None = None
+param TaskResult.__init__ status: str | None = None
+param TaskResult.__init__ status_code: int | None = None
+param TaskResult.__init__ task_id: str | None = None
+param TaskResult.__init__ update_time: str | None = None
+param TaskResult.__init__ url: str | None = None
+param Usage.__init__ #0 is_active: bool [required]
+param Usage.__init__ #1 concurrent_request: int [required]
+param Usage.__init__ #2 max_monthly_request: int [required]
+param Usage.__init__ #3 remaining_concurrent_request: int [required]
+param Usage.__init__ #4 remaining_monthly_request: int [required]
+prop Client.jobs: AsyncJobs
+prop ScrapeResult.content_type: str | None
+prop ScrapeResult.cookies: str | None
+prop ScrapeResult.cost: int | None
+prop ScrapeResult.initial_status_code: int | None
+prop ScrapeResult.remaining_credits: int | None
+prop ScrapeResult.resolved_url: str | None
+prop ScrapeResult.target_redirected_location: str | None
+prop ScrapeResult.target_url: str | None
+prop ScrapeResult.text: str

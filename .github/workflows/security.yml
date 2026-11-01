@@ -1,0 +1,147 @@
+# SPDX-License-Identifier: Apache-2.0
+# Security battery: secret scan, dependency vulnerability scans, supply-chain
+# posture (Scorecard) and an SBOM. Every action is pinned to a full commit SHA.
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Weekly, so a new advisory against unchanged code still surfaces.
+  schedule:
+    - cron: "17 5 * * 1"
+
+# Least privilege by default; each job opts in to exactly what it needs.
+permissions: {}
+
+# Every job runs on GitHub-hosted runners except Scorecard, which reads the
+# repository through the GitHub API: the org's IP allow list only accepts
+# those calls from the self-hosted runners.
+
+jobs:
+  # --- secret scan (full git history) -------------------------------------
+  # gitleaks-action v2 requires a paid license for organization repos, so we
+  # run a pinned, checksum-verified gitleaks binary instead (license-free).
+  gitleaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # full history for a complete secret scan
+          persist-credentials: false
+      - name: Install gitleaks (pinned version and SHA-256)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          # Pinned here, not read from a checksums file on the same release,
+          # so a replaced release asset fails the check.
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          set -euo pipefail
+          FILE="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -sSLf -o "$FILE" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${FILE}"
+          echo "${GITLEAKS_SHA256}  ${FILE}" | sha256sum -c -
+          tar -xzf "$FILE" gitleaks
+          # No sudo on the self-hosted runners: run it from the job's temp dir.
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          ./gitleaks version
+      - name: Scan git history for secrets
+        # The config and the ignore list come from this workflow, never from the
+        # checkout: a pull request could otherwise add a .gitleaks.toml or a
+        # .gitleaksignore that allowlists the secret it introduces.
+        run: |
+          set -euo pipefail
+          cfg="$(mktemp -d "$RUNNER_TEMP/gitleaks.XXXXXX")"
+          printf '[extend]\nuseDefault = true\n' > "$cfg/gitleaks.toml"
+          gitleaks git "$GITHUB_WORKSPACE" --redact --no-banner \
+            --config "$cfg/gitleaks.toml" --gitleaks-ignore-path "$cfg"
+
+  # --- dependency vulnerability scan (OSV) --------------------------------
+  osv-scanner:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The hash-pinned requirement files are the lockfiles: the runtime
+      # dependencies and every dev, build and audit tool CI installs.
+      - uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+        with:
+          scan-args: |-
+            --lockfile=requirements-dev.txt
+            --lockfile=requirements-build.txt
+            --lockfile=requirements-audit.txt
+
+  # --- Python dependency audit -------------------------------------------
+  pip-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install pip-audit (hash-pinned)
+        run: python -m pip install --require-hashes -r requirements-audit.txt
+      # Audits the pinned files as written (no resolution, nothing installed).
+      - name: Audit the pinned dependencies for known vulnerabilities
+        run: |
+          pip-audit --disable-pip --strict \
+            -r requirements-dev.txt -r requirements-build.txt -r requirements-audit.txt
+
+  # --- SBOM generation + artifact upload ----------------------------------
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate SBOM (SPDX JSON) and upload as a workflow artifact
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: sdo-sdk-python.spdx.json
+          output-file: sdo-sdk-python.spdx.json
+          upload-artifact: true
+
+  # --- OpenSSF Scorecard ----------------------------------------------------
+  # For the default branch only (pushes to main and the weekly run). It reads
+  # the repository through the GitHub API, which the org's IP allow list only
+  # permits from the self-hosted runners. Publishing to the Scorecard API needs
+  # a GitHub-hosted runner, so results go to code scanning only.
+  scorecard:
+    if: github.event_name != 'pull_request'
+    runs-on: self-hosted
+    permissions:
+      security-events: write # upload the SARIF to code scanning
+      contents: read
+      actions: read
+    steps:
+      # The persistent runners may still hold root-owned files that an older,
+      # container-based job left in this workspace; reclaim them before the
+      # checkout cleans it.
+      - name: Reclaim the workspace
+        working-directory: ${{ github.workspace }}
+        run: docker run --rm -v "$PWD:/w" golang:1.27 chown -R "$(id -u):$(id -g)" /w
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: false
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: results.sarif
