@@ -5,6 +5,14 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Pinned development and audit tools: `brotli` 1.2.1 (PYSEC-2026-4322),
+  `filelock` 4.2.6 and `msgpack` 1.2.4, which pip-audit and OSV-Scanner flag
+  at the earlier pins. The package's own runtime requirements are unchanged.
+
 ## [0.1.0] - 2026-11-01
 
 The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
@@ -191,8 +199,9 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
 - Only Encoding Standard labels select a decoder, so a page cannot pick an
   arbitrary Python codec.
 - CI: every job runs on GitHub-hosted runners, so code from a pull request
-  never reaches the org's persistent self-hosted runners (only CodeQL's result
-  upload runs there, and never for a fork); every checkout drops its token
+  never reaches the org's persistent self-hosted runners (only CodeQL runs
+  there, for same-repository events; a fork's pull request is analysed once
+  merged); every checkout drops its token
   (`persist-credentials: false`); and gitleaks scans with a config and ignore
   list from the workflow, so a pull request cannot allowlist its own secret with
   a `.gitleaks.toml` or `.gitleaksignore`.

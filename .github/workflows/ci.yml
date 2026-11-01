@@ -11,11 +11,11 @@ permissions: {}
 
 # Every job runs on GitHub-hosted runners: free for a public repository, a
 # clean image every time, and no code from outside the org ever reaches the
-# org's persistent self-hosted runners. CodeQL is the one exception: uploading
-# its results is a GitHub API call, which the org's IP allow list only accepts
-# from the self-hosted runners, so same-repository events analyse there; a pull
-# request from a fork analyses on a GitHub-hosted runner and keeps its SARIF as
-# an artifact instead.
+# org's persistent self-hosted runners. CodeQL is the one exception: its result
+# upload and its own status calls are GitHub API requests, which the org's IP
+# allow list only accepts from the self-hosted runners, so it runs there for
+# same-repository events only; a pull request from a fork is not analysed
+# (its code must not reach those runners) and is analysed on main once merged.
 
 jobs:
   lint:
@@ -100,19 +100,19 @@ jobs:
             || (echo "::error::public API changed — regenerate api-surface.txt (python tools/api_surface.py > api-surface.txt) and commit" && exit 1)
 
   codeql:
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'self-hosted' || 'ubuntu-latest' }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: self-hosted
     permissions:
       contents: read
       actions: read
       security-events: write
     steps:
       # The persistent runners may still hold root-owned files that an older,
-      # container-based job left in this workspace; reclaim them before the
-      # checkout cleans it.
+      # container-based job left in this workspace or in the runner's temp
+      # directory (CodeQL writes its PR diff range there); reclaim both.
       - name: Reclaim the workspace
-        if: runner.environment == 'self-hosted'
         working-directory: ${{ github.workspace }}
-        run: docker run --rm -v "$PWD:/w" golang:1.27 chown -R "$(id -u):$(id -g)" /w
+        run: docker run --rm -v "$PWD:/w" -v "$RUNNER_TEMP:/t" golang:1.27 chown -R "$(id -u):$(id -g)" /w /t
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -120,11 +120,3 @@ jobs:
         with:
           languages: python
       - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        with:
-          upload: ${{ runner.environment == 'self-hosted' && 'always' || 'never' }}
-          output: codeql-sarif
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: runner.environment != 'self-hosted'
-        with:
-          name: codeql-sarif
-          path: codeql-sarif/
