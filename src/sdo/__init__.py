@@ -29,7 +29,18 @@ from .errors import (
     SdoTransportError,
     SdoValidationError,
 )
-from .jobs import Account, AsyncJobs, Job, JobStatus, Task, TaskResult
+from .jobs import (
+    JOB_SORTS,
+    JOB_STATUSES,
+    MAX_PLUGIN_PARAMS,
+    Account,
+    AsyncJobs,
+    Job,
+    JobPage,
+    JobStatus,
+    Task,
+    TaskResult,
+)
 from .response import ScrapeResult
 from .usage import Usage
 
@@ -41,7 +52,11 @@ __all__ = [
     "Usage",
     "AsyncJobs",
     "Job",
+    "JobPage",
     "JobStatus",
+    "JOB_SORTS",
+    "JOB_STATUSES",
+    "MAX_PLUGIN_PARAMS",
     "Task",
     "TaskResult",
     "Account",

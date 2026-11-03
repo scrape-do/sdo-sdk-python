@@ -5,6 +5,7 @@ Every jobs call authenticates via the ``X-Token`` header (never a token= query),
 targets the ``/api/v1/...`` REST surface, and returns typed dataclasses.
 """
 
+import datetime
 import gzip
 import json
 
@@ -136,7 +137,7 @@ def test_jobs_list_unwraps_jobs_array():
         )
     )
     with Client(token="t") as c:
-        jobs = c.jobs.list()
+        jobs = c.jobs.list().jobs
     assert [j.job_id for j in jobs] == ["a", "b"]
 
 
@@ -301,3 +302,123 @@ def test_job_body_is_canonical_json():
         "Wait": 1,
     }
     assert route.calls.last.request.content.startswith(b'{"A":"\xe2\x80\xa8","Targets"')
+
+
+@respx.mock
+def test_jobs_create_plugin_posts_plugin_key_and_params():
+    route = respx.post(f"{BASE}/api/v1/jobs").mock(
+        return_value=httpx.Response(200, json={"JobID": "job-p", "TaskIDs": ["t1", "t2"]})
+    )
+    params = [{"asin": "B0A", "geocode": "us"}, {"asin": "B0B", "geocode": "de"}]
+    with Client(token="t") as c:
+        job = c.jobs.create_plugin("amazon/pdp", params, {"WebhookURL": "https://example.com/hook"})
+    assert job == Job(job_id="job-p", task_ids=["t1", "t2"])
+    body = json.loads(route.calls.last.request.content)
+    assert body == {
+        "Plugin": {"Key": "amazon/pdp", "Params": params},
+        "WebhookURL": "https://example.com/hook",
+    }
+    with Client(token="t") as c:
+        c.jobs.create_plugin("google/search", ({"q": "x"},))
+    assert json.loads(route.calls.last.request.content) == {
+        "Plugin": {"Key": "google/search", "Params": [{"q": "x"}]}
+    }
+
+
+@pytest.mark.parametrize(
+    ("key", "params", "options"),
+    [
+        ("amazon", [{"q": "x"}], None),
+        ("amazon/pdp?x=1", [{"q": "x"}], None),
+        ("amazon/pdp\n", [{"q": "x"}], None),
+        (5, [{"q": "x"}], None),
+        ("amazon/pdp", [], None),
+        ("amazon/pdp", "q=x", None),
+        ("amazon/pdp", [{"q": "x"}] * 1001, None),
+        ("amazon/pdp", [None], None),
+        ("amazon/pdp", [{"q": "x"}], {"targets": ["https://e.com"]}),
+        ("amazon/pdp", [{"q": "x"}], "not a mapping"),
+    ],
+)
+def test_jobs_create_plugin_rejects_bad_input_before_sending(key, params, options):
+    with respx.mock(assert_all_called=False) as router:
+        route = router.post(f"{BASE}/api/v1/jobs")
+        with Client(token="t") as c, pytest.raises(SdoConfigError):
+            c.jobs.create_plugin(key, params, options)
+        assert not route.called
+
+
+def test_jobs_create_refuses_a_plugin_option():
+    with Client(token="t") as c, pytest.raises(SdoConfigError):
+        c.jobs.create(["https://e.com"], {"Plugin": {}})
+
+
+@respx.mock
+def test_jobs_list_sends_filters_and_parses_the_page():
+    route = respx.get(f"{BASE}/api/v1/jobs").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "Jobs": [
+                    {
+                        "JobID": "a",
+                        "Status": "success",
+                        "AcquiredConcurrency": 2,
+                        "LimitConcurrency": 3,
+                    }
+                ],
+                "TotalCount": 150,
+                "PageSize": 25,
+                "PageNumber": 2,
+                "TotalPages": 6,
+            },
+        )
+    )
+    trt = datetime.timezone(datetime.timedelta(hours=3))
+    with Client(token="t") as c:
+        page = c.jobs.list(
+            page=2,
+            page_size=25,
+            status="success",
+            start_from=datetime.datetime(2025, 1, 1, 3, 0, 0, 123, tzinfo=trt),
+            start_to="2025-01-31T23:59:59Z",
+            sort="start_time_asc",
+        )
+    assert dict(route.calls.last.request.url.params) == {
+        "page": "2",
+        "page_size": "25",
+        "status": "success",
+        "start_from": "2025-01-01T00:00:00Z",
+        "start_to": "2025-01-31T23:59:59Z",
+        "sort": "start_time_asc",
+    }
+    assert (page.total_count, page.page_size, page.page_number, page.total_pages) == (150, 25, 2, 6)
+    assert page.jobs[0].acquired_concurrency == 2
+    assert page.jobs[0].limit_concurrency == 3
+    with Client(token="t") as c:
+        c.jobs.list()
+    assert route.calls.last.request.url.query == b""
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"page": 0},
+        {"page": True},
+        {"page": 1.5},
+        {"page_size": 101},
+        {"page_size": "10"},
+        {"status": "done"},
+        {"sort": "newest"},
+        {"start_from": "2025-01-01"},
+        {"start_from": "2025-01-01t00:00:00z"},
+        {"start_from": datetime.datetime(2025, 1, 1)},
+        {"start_to": 5},
+    ],
+)
+def test_jobs_list_rejects_options_outside_the_documented_values(kwargs):
+    with respx.mock(assert_all_called=False) as router:
+        route = router.get(f"{BASE}/api/v1/jobs")
+        with Client(token="t") as c, pytest.raises(SdoConfigError):
+            c.jobs.list(**kwargs)
+        assert not route.called
