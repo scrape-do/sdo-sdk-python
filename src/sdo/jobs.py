@@ -18,11 +18,12 @@ from __future__ import annotations
 import base64
 import binascii
 import builtins
+import datetime as _dt
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -36,6 +37,17 @@ from .errors import SdoConfigError, SdoTransportError
 #: untrusted input cannot reach another endpoint ("../me", "x?y", "x#").
 _ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 _SURROGATE_RE = re.compile("[\ud800-\udfff]")
+
+#: The job statuses the API documents (also the ``status`` filter of ``list``).
+JOB_STATUSES = ("queuing", "queued", "pending", "rotating", "success", "error", "canceled")
+#: The sort orders ``list`` accepts; ``start_time_desc`` (newest first) is the default.
+JOB_SORTS = ("start_time_desc", "start_time_asc")
+#: The documented limit on params entries (tasks) in one plugin job.
+MAX_PLUGIN_PARAMS = 1000
+#: A documented plugin key such as ``amazon/pdp`` or ``google/shopping/product/stores``.
+_PLUGIN_KEY_RE = re.compile(r"^[a-z0-9-]+(/[a-z0-9-]+)+\Z")
+#: RFC 3339 with uppercase ``T`` and ``Z`` (the API is case-sensitive about both).
+_RFC3339_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})\Z")
 
 
 @dataclass(kw_only=True)
@@ -65,8 +77,23 @@ class JobStatus:
     status: str | None = None
     start_time: str | None = None
     end_time: str | None = None
+    #: The job's share of the account's separate async concurrency pool.
+    acquired_concurrency: int | None = None
+    limit_concurrency: int | None = None
     canceled: bool = False
     tasks: list[Task] = field(default_factory=list)
+
+
+@dataclass(kw_only=True)
+class JobPage:
+    """One page of :meth:`AsyncJobs.list`. The counts cover every job matching
+    the filters; ``page_size`` and ``page_number`` echo the page served."""
+
+    jobs: list[JobStatus] = field(default_factory=list)
+    total_count: int | None = None
+    page_size: int | None = None
+    page_number: int | None = None
+    total_pages: int | None = None
 
 
 @dataclass(kw_only=True)
@@ -166,8 +193,34 @@ def _job_status(d: Mapping[str, Any]) -> JobStatus:
         status=_str(d, "Status"),
         start_time=_str(d, "StartTime"),
         end_time=_str(d, "EndTime"),
+        acquired_concurrency=_int(d, "AcquiredConcurrency"),
+        limit_concurrency=_int(d, "LimitConcurrency"),
         canceled=d.get("Canceled") is True,
         tasks=[_task(t) for t in _list(d, "Tasks") if isinstance(t, dict)],
+    )
+
+
+def _positive_int(value: object, what: str, maximum: int | None = None) -> str:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or value < 1
+        or (maximum is not None and value > maximum)
+    ):
+        bound = " up" if maximum is None else f" to {maximum}"
+        raise SdoConfigError(f"{what} must be an integer from 1{bound}.")
+    return str(value)
+
+
+def _timestamp(value: object, what: str) -> str:
+    if isinstance(value, _dt.datetime):
+        if value.tzinfo is None:
+            raise SdoConfigError(f"{what} must be timezone-aware (e.g. tzinfo=datetime.UTC).")
+        return value.astimezone(_dt.UTC).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if isinstance(value, str) and _RFC3339_RE.match(value):
+        return value
+    raise SdoConfigError(
+        f"{what} must be an aware datetime or an RFC 3339 string such as 2025-01-01T00:00:00Z."
     )
 
 
@@ -302,18 +355,51 @@ class AsyncJobs:
     def create(self, targets: Sequence[str], options: Mapping[str, Any] | None = None) -> Job:
         """Submit a job. ``targets`` is a non-empty list of URLs; ``options`` is
         merged into the JSON body using the API's own PascalCase job-body keys
-        (e.g. ``Super``, ``GeoCode``, ``Render``, ``Output``)."""
+        (e.g. ``Super``, ``GeoCode``, ``Render``, ``Output``, ``WebhookURL``) and
+        may set neither ``Targets`` nor ``Plugin``."""
         if isinstance(targets, str) or not isinstance(targets, (list, tuple)) or not targets:
             raise SdoConfigError("targets must be a non-empty list of URLs.")
         if not all(isinstance(t, str) and t for t in targets):
             raise SdoConfigError("Every target must be a non-empty URL string.")
+        return self._create({"Targets": list(targets)}, options)
+
+    def create_plugin(
+        self,
+        key: str,
+        params: Sequence[Mapping[str, Any]],
+        options: Mapping[str, Any] | None = None,
+    ) -> Job:
+        """Submit a plugin job: ``key`` names the plugin (``amazon/pdp``,
+        ``google/search``, ...) and each ``params`` entry becomes one task, with
+        the plugin's own parameter names. 1 to 1000 entries. ``options`` are
+        merged into the body like :meth:`create`'s and may set neither
+        ``Targets`` nor ``Plugin``."""
+        if not isinstance(key, str) or not _PLUGIN_KEY_RE.match(key):
+            raise SdoConfigError(
+                f"Invalid plugin key {key!r}: expected a plugin path such as amazon/pdp."
+            )
+        if not isinstance(params, (list, tuple)) or not 1 <= len(params) <= MAX_PLUGIN_PARAMS:
+            raise SdoConfigError(
+                f"A plugin job needs 1 to {MAX_PLUGIN_PARAMS} params entries (one per task)."
+            )
+        if not all(isinstance(p, Mapping) for p in params):
+            raise SdoConfigError("Every plugin params entry must be a mapping.")
+        source = {"Plugin": {"Key": key, "Params": [dict(p) for p in params]}}
+        return self._create(source, options)
+
+    def _create(self, source: dict[str, Any], options: Mapping[str, Any] | None) -> Job:
         if options is not None and not isinstance(options, Mapping):
             raise SdoConfigError(f"options must be a mapping, got {type(options).__name__}.")
         opts = dict(options or {})
-        if any(isinstance(k, str) and k.lower() == "targets" for k in opts):
-            raise SdoConfigError("Pass the targets as the first argument, not inside options.")
+        # Compared case-insensitively: a JSON decoder on the other side may be.
+        for k in opts:
+            if isinstance(k, str) and k.lower() in ("targets", "plugin"):
+                raise SdoConfigError(
+                    f"options may not set {k}: a job has either targets (create) "
+                    "or a plugin (create_plugin)."
+                )
         try:
-            body = jdump({**opts, "Targets": list(targets)})
+            body = jdump({**opts, **source})
         except (TypeError, ValueError) as exc:
             raise SdoConfigError(f"options are not JSON-serializable: {exc}") from None
         d = self._object("POST", "/jobs", body=body)
@@ -330,10 +416,55 @@ class AsyncJobs:
         path = f"/jobs/{_segment(job_id, 'job_id')}/{_segment(task_id, 'task_id')}"
         return task_result(self._object("GET", path))
 
-    def list(self) -> builtins.list[JobStatus]:
-        """List all jobs for the account."""
-        d = self._object("GET", "/jobs")
-        return [_job_status(j) for j in _list(d, "Jobs") if isinstance(j, dict)]
+    def list(
+        self,
+        *,
+        page: int | None = None,
+        page_size: int | None = None,
+        status: str | None = None,
+        start_from: _dt.datetime | str | None = None,
+        start_to: _dt.datetime | str | None = None,
+        sort: str | None = None,
+    ) -> JobPage:
+        """One page of the account's jobs (default: the 10 most recent).
+
+        :param page: 1-based page number.
+        :param page_size: jobs per page, 1-100.
+        :param status: keep only jobs in this state (one of :data:`JOB_STATUSES`).
+        :param start_from: inclusive lower bound on the job's start time: an
+            aware ``datetime`` or an RFC 3339 string such as
+            ``2025-01-01T00:00:00Z``.
+        :param start_to: inclusive upper bound on the job's start time.
+        :param sort: ``start_time_desc`` (default) or ``start_time_asc``.
+
+        Walk every page with ``page`` from 1 to the returned ``total_pages``.
+        """
+        query: dict[str, str] = {}
+        if page is not None:
+            query["page"] = _positive_int(page, "page")
+        if page_size is not None:
+            query["page_size"] = _positive_int(page_size, "page_size", 100)
+        if status is not None:
+            if status not in JOB_STATUSES:
+                raise SdoConfigError(f"status must be one of {', '.join(JOB_STATUSES)}.")
+            query["status"] = status
+        if start_from is not None:
+            query["start_from"] = _timestamp(start_from, "start_from")
+        if start_to is not None:
+            query["start_to"] = _timestamp(start_to, "start_to")
+        if sort is not None:
+            if sort not in JOB_SORTS:
+                raise SdoConfigError(f"sort must be one of {', '.join(JOB_SORTS)}.")
+            query["sort"] = sort
+        path = "/jobs" + (f"?{urlencode(query)}" if query else "")
+        d = self._object("GET", path)
+        return JobPage(
+            jobs=[_job_status(j) for j in _list(d, "Jobs") if isinstance(j, dict)],
+            total_count=_int(d, "TotalCount"),
+            page_size=_int(d, "PageSize"),
+            page_number=_int(d, "PageNumber"),
+            total_pages=_int(d, "TotalPages"),
+        )
 
     def cancel(self, job_id: str) -> None:
         """Cancel a job by id. Any 2xx is success, whatever its body says."""

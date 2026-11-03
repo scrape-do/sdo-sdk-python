@@ -7,9 +7,16 @@ attr Account.total_concurrency: int | None
 attr Job.job_id: str | None
 attr Job.message: str | None
 attr Job.task_ids: list[str]
+attr JobPage.jobs: list[JobStatus]
+attr JobPage.page_number: int | None
+attr JobPage.page_size: int | None
+attr JobPage.total_count: int | None
+attr JobPage.total_pages: int | None
+attr JobStatus.acquired_concurrency: int | None
 attr JobStatus.canceled: bool
 attr JobStatus.end_time: str | None
 attr JobStatus.job_id: str | None
+attr JobStatus.limit_concurrency: int | None
 attr JobStatus.start_time: str | None
 attr JobStatus.status: str | None
 attr JobStatus.task_ids: list[str]
@@ -148,6 +155,7 @@ class Account
 class AsyncJobs
 class Client
 class Job
+class JobPage
 class JobStatus
 class ScrapeConfig
 class ScrapeResult
@@ -169,6 +177,7 @@ ctor Account.__init__
 ctor AsyncJobs.__init__
 ctor Client.__init__
 ctor Job.__init__
+ctor JobPage.__init__
 ctor JobStatus.__init__
 ctor ScrapeConfig.__init__
 ctor ScrapeResult.__init__
@@ -186,12 +195,19 @@ ctor SdoValidationError.__init__
 ctor Task.__init__
 ctor TaskResult.__init__
 ctor Usage.__init__
+data JOB_SORTS: tuple
+data JOB_STATUSES: tuple
+data MAX_PLUGIN_PARAMS: int
 data __version__: str
 export Account
 export AsyncJobs
 export Client
+export JOB_SORTS
+export JOB_STATUSES
 export Job
+export JobPage
 export JobStatus
+export MAX_PLUGIN_PARAMS
 export ScrapeConfig
 export ScrapeResult
 export SdoAPIError
@@ -214,7 +230,8 @@ method AsyncJobs.__exit__() -> None
 method AsyncJobs.cancel() -> None
 method AsyncJobs.close() -> None
 method AsyncJobs.create() -> Job
-method AsyncJobs.list() -> builtins.list[JobStatus]
+method AsyncJobs.create_plugin() -> Job
+method AsyncJobs.list() -> JobPage
 method AsyncJobs.me() -> Account
 method AsyncJobs.result() -> TaskResult
 method AsyncJobs.status() -> JobStatus
@@ -246,6 +263,15 @@ param AsyncJobs.__init__ timeout: float | None = None
 param AsyncJobs.cancel #0 job_id: str [required]
 param AsyncJobs.create #0 targets: Sequence[str] [required]
 param AsyncJobs.create #1 options: Mapping[str, Any] | None = None
+param AsyncJobs.create_plugin #0 key: str [required]
+param AsyncJobs.create_plugin #1 params: Sequence[Mapping[str, Any]] [required]
+param AsyncJobs.create_plugin #2 options: Mapping[str, Any] | None = None
+param AsyncJobs.list page: int | None = None
+param AsyncJobs.list page_size: int | None = None
+param AsyncJobs.list sort: str | None = None
+param AsyncJobs.list start_from: _dt.datetime | str | None = None
+param AsyncJobs.list start_to: _dt.datetime | str | None = None
+param AsyncJobs.list status: str | None = None
 param AsyncJobs.result #0 job_id: str [required]
 param AsyncJobs.result #1 task_id: str [required]
 param AsyncJobs.status #0 job_id: str [required]
@@ -277,9 +303,16 @@ param Client.scrape url: str | None = None
 param Job.__init__ job_id: str | None = None
 param Job.__init__ message: str | None = None
 param Job.__init__ task_ids: list[str] = <factory>
+param JobPage.__init__ jobs: list[JobStatus] = <factory>
+param JobPage.__init__ page_number: int | None = None
+param JobPage.__init__ page_size: int | None = None
+param JobPage.__init__ total_count: int | None = None
+param JobPage.__init__ total_pages: int | None = None
+param JobStatus.__init__ acquired_concurrency: int | None = None
 param JobStatus.__init__ canceled: bool = False
 param JobStatus.__init__ end_time: str | None = None
 param JobStatus.__init__ job_id: str | None = None
+param JobStatus.__init__ limit_concurrency: int | None = None
 param JobStatus.__init__ start_time: str | None = None
 param JobStatus.__init__ status: str | None = None
 param JobStatus.__init__ task_ids: list[str] = <factory>

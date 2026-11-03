@@ -7,6 +7,27 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `jobs.create_plugin(key, params, options=None)`: plugin jobs on the async
+  API (`{"Plugin": {"Key": ..., "Params": [...]}}`), one task per params
+  entry, 1 to 1000 entries. A malformed key, an empty or oversized list, or
+  options that set `Targets` or `Plugin` raise `SdoConfigError`.
+- `jobs.list(page=, page_size=, status=, start_from=, start_to=, sort=)`
+  (page size 1-100; start bounds as an aware `datetime` or an RFC 3339
+  string) returning a `JobPage` (`jobs`, `total_count`, `page_size`,
+  `page_number`, `total_pages`); `JOB_STATUSES`, `JOB_SORTS` and
+  `MAX_PLUGIN_PARAMS`.
+- `JobStatus.acquired_concurrency` and `JobStatus.limit_concurrency`.
+
+### Changed
+
+- **Breaking:** `jobs.list()` returns a `JobPage` instead of a list. The
+  endpoint is paginated (10 jobs a page by default), so the old method
+  silently returned only the first page while documenting all jobs. Read
+  `.jobs` for the list.
+- `jobs.create` also refuses options that set `Plugin`.
+
 ### Security
 
 - Pinned development and audit tools: `brotli` 1.2.1 (PYSEC-2026-4322),

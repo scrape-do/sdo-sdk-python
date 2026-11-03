@@ -265,6 +265,8 @@ ordinary synchronous calls, not `asyncio` coroutines. They return typed
 objects; a field the API sends with an unexpected type reads as `None`:
 
 ```python
+from datetime import UTC, datetime
+
 with Client() as client:
     job = client.jobs.create(["https://example.com"], {"Super": True, "GeoCode": "us"})
     status = client.jobs.status(job.job_id)
@@ -272,10 +274,34 @@ with Client() as client:
         result = client.jobs.result(job.job_id, task.task_id)
         print(task.url, result.status_code, len(result.content_bytes()))
 
-    client.jobs.list()            # all jobs
+    # A plugin job: one task per params entry (at most 1000), with the plugin's
+    # own parameter names. Targets and a plugin cannot be combined in one job.
+    client.jobs.create_plugin(
+        "amazon/pdp",
+        [{"asin": "B0C7BKZ883", "geocode": "us"}, {"asin": "B0BSHF7WHW", "geocode": "us"}],
+    )
+
+    # The job list is paginated (default: the 10 most recent). Filter by status
+    # and start time, sort, and walk `page` up to `total_pages`.
+    page = client.jobs.list(
+        status="success",
+        start_from=datetime(2025, 1, 1, tzinfo=UTC),  # or an RFC 3339 string
+        sort="start_time_asc",
+        page=2,
+        page_size=25,  # 1-100
+    )
+    page.jobs, page.total_count, page.total_pages
+
     client.jobs.cancel(job.job_id)
     client.jobs.me()              # concurrency + remaining credits
 ```
+
+An invalid plugin key, an empty or oversized `params` list, options that set
+`Targets` or `Plugin`, and `list` arguments outside the documented values raise
+`SdoConfigError` before anything is sent. The async API has its own concurrency
+pool (30% of the plan's limit, not taken from the main API's);
+`JobStatus.acquired_concurrency` and `limit_concurrency` report a job's share of
+it.
 
 `client.jobs` shares the client's connection pool. For a job-only program,
 `AsyncJobs(token=..., base_url=...)` builds its own, with the same validation
