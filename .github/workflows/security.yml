@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           FILE="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           cd "$RUNNER_TEMP"
-          curl -sSLf -o "$FILE" \
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o "$FILE" \
             "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${FILE}"
           echo "${GITLEAKS_SHA256}  ${FILE}" | sha256sum -c -
           tar -xzf "$FILE" gitleaks
