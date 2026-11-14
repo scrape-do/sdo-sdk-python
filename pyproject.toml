@@ -28,7 +28,8 @@ classifiers = [
 dependencies = [
     "httpx>=0.24",
     # >=1.2: Decompressor.process(output_buffer_limit=...) bounds brotli output.
-    "brotli>=1.2",
+    # >=1.2.1: fixes an out-of-bounds write in the decoder (PYSEC-2026-4322).
+    "brotli>=1.2.1",
 ]
 
 [project.optional-dependencies]
