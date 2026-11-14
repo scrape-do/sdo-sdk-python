@@ -376,7 +376,7 @@
           "us"
         ],
         [
-          "zipCode",
+          "zipcode",
           "90210"
         ]
       ],
@@ -5342,7 +5342,7 @@
           },
           "Scrape.do": {
             "Request-Cost": 1,
-            "Rid": "r-1"
+            "Remaining-Credits": "41"
           }
         },
         "expect": {
@@ -5353,7 +5353,7 @@
             "Content-Type": "text/html"
           },
           "scrape_do": {
-            "Rid": "r-1"
+            "Remaining-Credits": "41"
           },
           "content_bytes_hex": "6869"
         },

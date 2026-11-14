@@ -1,4 +1,5 @@
-# Contributing to sdo-sdk
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+# Contributing to sdo-sdk-python
 
 Thanks for taking the time to help out — contributions are genuinely welcome, whether that's a bug report, a failing test that pins down an edge case, a docs fix, or a new feature. This guide gets you from a fresh clone to a passing test run, and explains the few conventions we hold the line on.
 
@@ -71,7 +72,7 @@ This SDK is test-driven. The expected loop for any behavioral change is:
 
 Concretely, if you're fixing a bug, the PR should contain a test that fails on `main` and passes with your fix. If you're adding behavior, the test that asserts it comes first in the diff's intent (we don't enforce commit ordering, but the PR must contain the test).
 
-Tests live in `tests/`. Mirror the module layout — a change to `src/sdo/client.py` gets tests in `tests/test_client.py`. Mock HTTP with `respx` (or an `httpx.MockTransport`); never hit the live API in tests. The conformance corpus in `tests/conformance.json` is generated — never edit it by hand.
+Tests live in `tests/`. Mirror the module layout — a change to `src/sdo/client.py` gets tests in `tests/test_client.py`. Mock HTTP with `respx` (or an `httpx.MockTransport`); never hit the live API in tests. `conformance.json` is maintained by Scrape.do and shared by the Go, JavaScript and Python SDKs; its sha256 sidecar is checked by the tests. Do not edit `tests/conformance.json` in a contribution; describe the change in an issue.
 
 ### What "good behavior" looks like here
 
@@ -99,17 +100,17 @@ The `term-missing` report lists uncovered lines so you can see exactly what need
 
 ## Changing the public surface
 
-The SDK's public surface — request parameters, their defaults, and observable behavior — **mirrors the `sdo` spec** (the hand-maintained source of truth). It is not invented in this repo.
+The request parameters, defaults and observable behaviour are shared by all sdo SDKs and pinned by the conformance corpus (`conformance.json`), which Scrape.do maintains against https://scrape.do/documentation. Propose a change in an issue first; a change to a parameter lands in every SDK together.
 
 Any change to the public API must regenerate the committed golden
 (`python tools/api_surface.py > api-surface.txt`); CI fails when it drifts.
 Every `ScrapeConfig` field after `url` is keyword-only, so a new field goes in
-its spec position without breaking callers (the golden records no position for
-it, and the change classifies as additive).
+its place in the shared parameter order without breaking callers (the golden
+records no position for it, and the change classifies as additive).
 
-If your change adds, renames, removes, or alters the default of a parameter, or changes how a documented field behaves, **open an issue to discuss it first** before writing code. These changes ripple across the whole `sdo` toolchain (CLI, MCP, the other SDKs), so they're coordinated at the spec level, not patched ad hoc in one language binding. Bug fixes, internal refactors, docs, and test improvements don't need this — go straight to a PR.
+If your change adds, renames, removes, or alters the default of a parameter, or changes how a documented field behaves, **open an issue to discuss it first** before writing code. These changes ripple across the whole `sdo` toolchain (CLI, MCP, the other SDKs), so they're coordinated across the SDKs, not patched ad hoc in one language binding: Scrape.do updates the conformance corpus, and the change lands in every SDK together. Bug fixes, internal refactors, docs, and test improvements don't need this — go straight to a PR.
 
-The one exception baked into the design: `client.plugin(...)` is intentionally generic and passes through arbitrary plugin parameters, so you don't need a spec change to call a new plugin — that's the whole point of the generic surface.
+The one exception baked into the design: `client.plugin(...)` is intentionally generic and passes through arbitrary plugin parameters, so calling a new plugin needs no SDK change — that's the whole point of the generic surface.
 
 ---
 
@@ -127,7 +128,7 @@ A few habits the linter won't catch but we care about:
 
 ## Commits and sign-off
 
-We use two conventions on every commit. Both are checked in CI.
+We use two conventions on every commit. Both are checked in CI by the `commits` job, which fails a pull request until every commit has a Conventional Commit subject and a `Signed-off-by` trailer.
 
 ### Conventional Commits
 
@@ -162,7 +163,25 @@ Set your `git config user.name` and `user.email` to match. If you forget on the 
 git commit --amend -s --no-edit
 ```
 
-CI rejects unsigned commits, so it's worth wiring this into your muscle memory early.
+The `commits` job fails a pull request until every commit is signed off, so it's worth wiring this into your muscle memory early. For a multi-commit branch, rebase with `git rebase --signoff <base>`.
+
+---
+
+## Pull request checklist
+
+Before you open a PR, confirm:
+
+- [ ] A test was added or updated and it fails without your change (TDD).
+- [ ] `pytest` passes, including the conformance suite, with the 99% coverage floor.
+- [ ] `ruff check src tests tools` and `ruff format --check src tests tools` pass.
+- [ ] `mypy` passes.
+- [ ] `tests/conformance.json` was **not** edited.
+- [ ] If the public surface changed, `api-surface.txt` was regenerated (`python tools/api_surface.py > api-surface.txt`) and the change is noted in CHANGELOG.md.
+- [ ] No telemetry, no UI, no new auth scheme was introduced.
+- [ ] Commits follow Conventional Commits and are DCO signed off (`-s`).
+- [ ] The diff is scoped to the stated change.
+
+Open the PR against `main` with a clear description of what changed and why. Link the issue that motivated it. The maintainer will review; expect questions and keep the conversation in the PR.
 
 ---
 
@@ -172,15 +191,32 @@ This project is licensed under **Apache-2.0**. By contributing, and by signing o
 
 ---
 
-## A note on the repo lifecycle
+## Secrets and tokens
 
-This SDK is one of two surfaces that ship publicly at release, and this repository is public. Practically, for you as a contributor, this means: keep secrets out of code and tests, never commit a real token, and assume everything you write is read by the public. Use fake tokens like `test-token` in tests and examples.
+This repository is public. Practically, for you as a contributor, this means: keep secrets out of code and tests, never commit a real token, and assume everything you write is read by the public. Use fake tokens like `test-token` in tests and examples.
 
 ---
 
-## Getting help
+## Reporting bugs and security issues
 
-Open an issue if you're stuck, unsure whether a change needs spec discussion, or just want a second pair of eyes before investing in a PR. Small questions are fine — we'd rather answer one early than review the wrong thing late. Welcome aboard.
+- **Bug reports:** open an issue with a minimal reproduction — the exact SDK call, the expected result, and the actual result, with the SDK version (`python -c "import sdo; print(sdo.__version__)"`) and your Python version. Redact your token.
+- **Surface proposals:** open an issue first; see [Changing the public surface](#changing-the-public-surface).
+- **Security issues:** do not open a public issue. See [SECURITY.md](SECURITY.md).
+
+---
+
+## CI workflows
+
+| Workflow | Runs on | What it does |
+|----------|---------|--------------|
+| `ci.yml` | every push to `main` and every pull request | `ruff` lint and format check; `mypy --strict`; the test suite with the 99% line + branch coverage floor on Python 3.11–3.14 (Linux), plus macOS and Windows on 3.13, including the cross-language conformance suite and its integrity check; the public-API snapshot (`api-surface.txt`) must be up to date; on pull requests, a `commits` job checks every commit's subject and sign-off; CodeQL code scanning. |
+| `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner over the pinned requirement files, `pip-audit`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
+| `publish.yml` | a version tag only | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test. |
+| Dependabot | weekly | update pull requests for the GitHub Actions, taken only after a 7-day cooldown, and security-advisory pull requests for the pinned Python requirements, which the cooldown does not delay (version bumps of those are recompiled by hand with uv, see [Dev setup](#dev-setup)); each one runs the checks above. |
+
+Every job runs on GitHub-hosted runners except CodeQL and Scorecard, which run on the organisation's self-hosted runners: their uploads are GitHub API calls that the organisation's IP allow list only accepts from there. CodeQL runs there for same-repository events only, so a pull request from a fork is analysed once merged; Scorecard never runs on a pull request. Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
+
+---
 
 ## Releasing
 
@@ -197,4 +233,12 @@ approval:
 Before the first tag, create both environments with required reviewers and a
 deployment rule limited to `v*` tags, and add a trusted publisher on TestPyPI
 and on PyPI for this repository, workflow `publish.yml` and the matching
-environment. No API token is stored anywhere.
+environment. The project does not exist on either index yet, so each one is a
+"pending" publisher: the first upload through it creates the project. No API
+token is stored anywhere.
+
+---
+
+## Getting help
+
+Open an issue if you're stuck, unsure whether a change needs an issue first, or just want a second pair of eyes before investing in a PR. Small questions are fine — we'd rather answer one early than review the wrong thing late. Welcome aboard.

@@ -39,9 +39,9 @@ jobs:
             || { echo "::error::$GITHUB_REF_NAME ($GITHUB_SHA) is not on main"; exit 1; }
           tag="$GITHUB_REF_NAME"
           if [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+)$ ]]; then
-            channel=test; want="${BASH_REMATCH[1]}rc${BASH_REMATCH[2]}"   # PEP 440 spelling
+            channel="test"; want="${BASH_REMATCH[1]}rc${BASH_REMATCH[2]}"   # PEP 440 spelling
           elif [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            channel=live; want="${BASH_REMATCH[1]}"
+            channel="live"; want="${BASH_REMATCH[1]}"
           else
             echo "::error::$tag is neither vX.Y.Z nor vX.Y.Z-rc.N"; exit 1
           fi
@@ -125,6 +125,8 @@ jobs:
             index=(--index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/)
           fi
           for delay in 15 30 60 120 240; do
+            # Not hash-pinned on purpose: this installs the version just published,
+            # whose hashes exist only on the index, to prove a user's install works.
             if python -m pip install --no-cache-dir "${index[@]}" "sdo-sdk==${SDO_EXPECTED_VERSION}"; then
               python -c "import os, sdo; assert sdo.__version__ == os.environ['SDO_EXPECTED_VERSION'], sdo.__version__; print('installed', sdo.__version__)"
               exit 0

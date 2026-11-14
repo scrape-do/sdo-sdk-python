@@ -1,11 +1,18 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # sdo — Python SDK for Scrape.do
 
-The official Python SDK for the [Scrape.do](https://scrape.do) web-scraping API.
-Token-only auth, transparent compression, a typed result, and a generic plugin
-core — no telemetry, no UI.
+[![ci](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/ci.yml) [![security](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/security.yml) [![license](https://img.shields.io/github/license/scrape-do/sdo-sdk-python)](LICENSE)
 
-> Distribution name: **`sdo-sdk`** · import name: **`sdo`** · CLI binary (separate package): `sdo`.
+The official Python SDK for the [Scrape.do](https://scrape.do) web scraping API.
+Token-only auth, transparent compression, a typed result, and a generic plugin
+core — no telemetry, no UI. Every parameter is described in the
+[API documentation](https://scrape.do/documentation).
+
+> Distribution name: **`sdo-sdk`** · import name: **`sdo`**. The `sdo`
+> command-line tool is not on PyPI: install it with Homebrew
+> (`brew install scrape-do/tap/sdo`) or Scoop, see
+> [sdo-cli](https://github.com/scrape-do/sdo-cli). The PyPI project named `sdo`
+> is unrelated to Scrape.do.
 
 ## Install
 
@@ -15,7 +22,8 @@ pip install sdo-sdk
 pip install "sdo-sdk[parse]"
 ```
 
-Requires Python 3.11+. Brotli decompression is bundled (the `brotli` dependency).
+Requires Python 3.11+. Brotli decompression comes from `brotli` (1.2.1 or newer), a
+dependency installed with the SDK.
 
 ## 60-second quickstart
 
@@ -29,12 +37,15 @@ with Client(token="YOUR_TOKEN") as client:
     print(result.status_code)        # the TARGET's status code
     print(result.cost)               # credits this request cost
     print(result.text[:200])         # decoded HTML
-    title = result.selector().css("title::text").get()
+    title = result.selector().css("title::text").get()  # needs sdo-sdk[parse]
 
     # Reuse a config, or build one inline:
     cfg = ScrapeConfig(url="https://example.com", super_proxy=True, output="markdown")
     markdown = client.scrape(cfg).text
 ```
+
+Runnable programs are in [`examples/`](examples/): with `sdo-sdk` installed,
+set `SDO_TOKEN` and run `python examples/quickstart.py`.
 
 `ScrapeConfig` fields mirror the documented Scrape.do parameters. Values that
 mean "unset" (`None`, `False`, `0`, `""`, empty list or dict) are not sent;
@@ -78,7 +89,7 @@ client cancelled it before it finished; it is not an upstream failure and is
 not retried.
 
 **Base URLs** are scheme, host, optional port and an optional path prefix,
-which is kept (`https://gateway.internal/scrape-do` sends scrapes to
+which is kept (`https://scraper.example.com/scrape-do` sends scrapes to
 `/scrape-do/`). They must be `https://`; plain `http://` is accepted only for
 `localhost`, `127.0.0.1` and `::1`, or with `allow_insecure_http=True` (the
 token is then sent in cleartext). Credentials, a query or a fragment in a base
@@ -95,7 +106,7 @@ which keeps its settings (redirects are still never followed):
 import httpx
 from sdo import Client
 
-with httpx.Client(proxy="http://proxy.internal:3128") as http, Client(http_client=http) as client:
+with httpx.Client(proxy="http://proxy.example.com:3128") as http, Client(http_client=http) as client:
     result = client.scrape("https://example.com")
 ```
 
@@ -187,7 +198,7 @@ status the gateway billed — come back as a `ScrapeResult` (inspect
 figure: a response of status 400 or above with a positive cost is the target's
 own answer (its 400, 401, 403, 422, ...), returned as a result and never
 retried. Without one, the status keeps its gateway meaning: the gateway's own
-400 (a parameter it rejected, such as `render=mert`) raises
+400 (a parameter it rejected, such as `render=maybe`) raises
 `SdoValidationError`, its 401 (a refused token, no credits) `SdoAuthError`. An
 error's `billed` follows the cost header when present (0 is not billed) and
 the documented status table otherwise; `error.cost` and `result.cost` hold the
@@ -307,19 +318,16 @@ it.
 `AsyncJobs(token=..., base_url=...)` builds its own, with the same validation
 and environment fallbacks (use it in a `with` block).
 
-> The old `callback` request parameter was removed by the gateway — use this job
-> API instead.
+`ScrapeConfig` has no field for the `callback` request parameter, which the
+[API documentation](https://scrape.do/documentation) marks deprecated in favour
+of Async API webhooks: to be notified when a job finishes, set the job option
+`WebhookURL`, or poll a job's status and pull each task's result.
 
-## CI/CD workflows
+## Releases
 
-| Workflow | Runs on | What it does |
-|----------|---------|--------------|
-| `ci.yml` | every push to `main` and every pull request | `ruff` lint and format check; `mypy --strict`; the test suite with the 99% line + branch coverage floor on Python 3.11–3.14 (Linux), plus macOS and Windows on 3.13, including the cross-language conformance suite and its integrity check; the public-API snapshot (`api-surface.txt`) must be up to date. CodeQL runs on every push and pull request. Everything runs on GitHub-hosted runners; CodeQL runs on the org's self-hosted runners for same-repository events (its upload is a GitHub API call the org's IP allow list only accepts from there); a pull request from a fork is analysed once merged. |
-| `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner over the pinned requirement files, `pip-audit`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
-| `publish.yml` | a version tag only | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test. |
-| Dependabot | weekly | update pull requests for the GitHub Actions, and security-advisory pull requests for the pinned Python requirements (version bumps of those are recompiled by hand with uv, see CONTRIBUTING.md), taken only after a 7-day cooldown; each one runs the checks above. |
-
-Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
+Releases are built by GitHub Actions and published to PyPI by trusted
+publishing, only from `main` and only after a maintainer approves; see
+[CONTRIBUTING.md](CONTRIBUTING.md#ci-workflows).
 
 ## Responsible use
 
@@ -329,6 +337,9 @@ collecting personal or copyrighted data unlawfully. Amazon, Walmart, Google and
 other names are trademarks of their respective owners; Scrape.do is not
 affiliated with them.
 
-## License
+## Documentation, support and security
 
-[Apache-2.0](LICENSE).
+- API documentation: https://scrape.do/documentation
+- Bugs and feature requests for this repository: [GitHub Issues](https://github.com/scrape-do/sdo-sdk-python/issues). Account, billing and API questions: support@scrape.do.
+- Security issues: see [SECURITY.md](SECURITY.md). Never post an API token in an issue.
+- [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md) · [MIGRATING.md](MIGRATING.md) · [Apache-2.0](LICENSE)

@@ -7,8 +7,8 @@
 # `pip install --no-deps --no-build-isolation -e .`.
 
 # The runtime dependencies (keep in step with pyproject.toml [project]).
-httpx>=0.24
-brotli>=1.2
+httpx>=0.26,<1
+brotli>=1.2.1
 
 # The build backend, so the editable install needs no unpinned download
 # (keep in step with pyproject.toml [build-system]).

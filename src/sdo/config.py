@@ -89,7 +89,7 @@ _PARAMS: tuple[tuple[str, str, int], ...] = (
     ("disable_retry", "disableRetry", _BOOL),
     ("geo_code", "geoCode", _STR),
     ("regional_geo_code", "regionalGeoCode", _STR),
-    ("zip_code", "zipCode", _STR),
+    ("zip_code", "zipcode", _STR),
     ("session_id", "sessionId", _STR),
     ("set_cookies", "setCookies", _STR),
     ("custom_headers", "customHeaders", _BOOL),

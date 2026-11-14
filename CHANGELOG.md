@@ -1,40 +1,12 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
-All notable changes to this project are documented here. The format is based on
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this project adheres
-to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Format: [Keep a Changelog](https://keepachangelog.com/) · [SemVer](https://semver.org/).
+
+Before 1.0, a minor version may contain breaking changes; each is marked
+**Breaking** and described in MIGRATING.md. Patch versions never break.
 
 ## [Unreleased]
-
-### Added
-
-- `jobs.create_plugin(key, params, options=None)`: plugin jobs on the async
-  API (`{"Plugin": {"Key": ..., "Params": [...]}}`), one task per params
-  entry, 1 to 1000 entries. A malformed key, an empty or oversized list, or
-  options that set `Targets` or `Plugin` raise `SdoConfigError`.
-- `jobs.list(page=, page_size=, status=, start_from=, start_to=, sort=)`
-  (page size 1-100; start bounds as an aware `datetime` or an RFC 3339
-  string) returning a `JobPage` (`jobs`, `total_count`, `page_size`,
-  `page_number`, `total_pages`); `JOB_STATUSES`, `JOB_SORTS` and
-  `MAX_PLUGIN_PARAMS`.
-- `JobStatus.acquired_concurrency` and `JobStatus.limit_concurrency`.
-
-### Changed
-
-- **Breaking:** `jobs.list()` returns a `JobPage` instead of a list. The
-  endpoint is paginated (10 jobs a page by default), so the old method
-  silently returned only the first page while documenting all jobs. Read
-  `.jobs` for the list.
-- `jobs.create` also refuses options that set `Plugin`.
-
-### Security
-
-- Pinned development and audit tools: `brotli` 1.2.1 (PYSEC-2026-4322),
-  `filelock` 4.2.6 and `msgpack` 1.2.4, which pip-audit and OSV-Scanner flag
-  at the earlier pins. The package's own runtime requirements are unchanged.
-
-## [0.1.0] - 2026-11-01
 
 The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
 (import name `sdo`). Requires Python 3.11 or newer.
@@ -62,13 +34,17 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   honouring `Retry-After` (whole seconds, capped at 30). Retried: 429, 502, 503,
   504 and 520–524, and failures before the request was sent (DNS, connect,
   TLS, connect timeout). Never retried: a failure after the request was sent
-  (read timeout, dropped connection, an undecodable or oversized body).
-  POST/PUT/PATCH/DELETE are retried only on 429.
+  (read timeout, dropped connection, an undecodable or oversized body), and a
+  510, the gateway's record of a request its HTTP client cancelled before it
+  finished (default message "The request was canceled by the HTTP client (HTTP
+  510)."). POST/PUT/PATCH/DELETE are retried only on 429.
 - **`ScrapeConfig`** — every documented scrape parameter as a field; `url` may
   be positional, every other field is keyword-only. Unset values (`None`,
   `False`, `0`, `""`, empty list or dict) are omitted and never validated,
-  except that the tri-state `block_resources` sends `False`;
-  render-only parameters require `render`; enums are validated
+  except that `block_resources` is tri-state: `None` sends nothing, `True`
+  needs `render`, and `False` is sent as `blockResources=false` (the gateway
+  defaults to `true`). Render-only parameters (`width` and `height` included)
+  require `render`; enums are validated
   case-insensitively and sent lowercase; the documented millisecond ranges are
   enforced (`timeout` 5000–120000, `retry_timeout` 5000–55000, `custom_wait`
   0–35000); `set_cookies` takes the
@@ -77,6 +53,16 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   `_`, `.` or `-`). The target URL must be an absolute `http`/`https` URL
   with a host (no whitespace, control characters or backslashes) and is
   otherwise sent exactly as given.
+- **Parameter rules** — the documented parameter dependencies the gateway
+  rejects with a 400, or documents as invalid, raise `SdoConfigError` before
+  any request: `show_frames`, `show_websocket_requests` and the screenshot
+  options require `return_json`; at most one screenshot option;
+  `particular_screenshot` excludes `play_with_browser`; `regional_geo_code`
+  requires `super_proxy` and excludes `geo_code`; `zip_code` requires
+  `super_proxy` and `geo_code`; `session_id` is an integer 0–1000000 (an `int`
+  or decimal digits; `0` is sent); `retry_timeout` excludes `render`; at most
+  one of `custom_headers`, `extra_headers`, `forward_headers`. `return_json`
+  without `render` is valid (the gateway wraps the plain response in JSON).
 - **One canonical wire format**, identical in every Scrape.do SDK: the query
   string is built by the SDK (typed parameters in a fixed order, then
   `extra_params` sorted; RFC 3986 escaping), and JSON values and bodies use
@@ -88,7 +74,10 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   must be HTTP tokens and values printable ASCII; `Host`, `Content-Length`,
   `Transfer-Encoding` and `Connection` cannot be set. The SDK sends no header
   of its own beyond `User-Agent` (exactly `sdo-sdk-python/<version>`),
-  `Accept-Encoding`, `Content-Type` and, for jobs, `X-Token`.
+  `Accept-Encoding`, `Content-Type` and, for jobs, `X-Token`. A rendered
+  request (`render=True`) with any method other than GET raises
+  `SdoConfigError` before anything is sent: the gateway answers it with a 400
+  ("JavaScript Render feature just works with 'GET' method type").
 - **`ScrapeResult`** — `.bytes()`, `.text` (decoded as the WHATWG Encoding
   Standard specifies: BOM, `Content-Type` charset, JSON as UTF-8, the HTML
   `<meta>` prescan, UTF-8), `.json()` (UTF-8 with invalid bytes replaced; `NaN`,
@@ -115,13 +104,13 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   KiB, and one that is larger, corrupt or cut off still raises the error for
   its status. A target's own 404/410, and any status of 400 or above the
   gateway billed (a positive `Scrape.do-Request-Cost`, the authoritative
-  figure), is a result, not an error; with `transparent_response=True`, so is
-  any status the target returned. Without a positive cost a status keeps its
-  gateway meaning (the gateway's own 400 is an `SdoValidationError`, its 401 an
-  `SdoAuthError`), on the scrape and plugin paths alike. `billed` follows the
-  cost header when present, else the documented table; `SdoAPIError.cost`
-  holds the header, read like `ScrapeResult.cost` (one value, ASCII digits, at
-  most 2**53 - 1).
+  figure), is a result, not an error, and is never retried; with
+  `transparent_response=True`, so is any status the target returned. Without a
+  positive cost a status keeps its gateway meaning (the gateway's own 400 is an
+  `SdoValidationError`, its 401 an `SdoAuthError`, both with `billed=False`),
+  on the scrape and plugin paths alike. `billed` follows the cost header when
+  present, else the documented table; `SdoAPIError.cost` holds the header,
+  read like `ScrapeResult.cost` (one value, ASCII digits, at most 2**53 - 1).
 - **Plugins** — `client.plugin(route, params)` calls any documented plugin
   endpoint generically and returns its JSON (or the raw bytes). Routes are
   validated; parameters are sent sorted, lists repeat their key, booleans as
@@ -139,61 +128,29 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   those fields raises `SdoTransportError`. The endpoint is rate-limited to 10
   requests per minute, so its error statuses (429 included) are not retried.
 - **Async jobs** — `client.jobs` (or a standalone `AsyncJobs`) for the job API
-  at `q.scrape.do/api/v1`: `create`, `status`, `result`, `list`, `cancel` and
-  `me`, returning typed `Job`, `JobStatus`, `Task`, `TaskResult` and `Account`
-  objects. The token travels in the `X-Token` header; job and task ids are
-  validated before they enter the URL; a field of an unexpected type reads as
-  absent; `TaskResult.content_bytes()` decodes base64 content.
-
-### Changed
-
-- `scrape` refuses a rendered request (`render=True`) with any
-  method other than GET with a `SdoConfigError`, before anything is sent. The
-  gateway answers such a request with a 400 ("JavaScript Render feature just
-  works with 'GET' method type").
-
-- **Breaking.** `block_resources=False` is now sent as `blockResources=false`
-  (it was dropped as unset, so resource blocking could not be turned off: the
-  gateway defaults to `true`). The field is tri-state: `None` sends nothing,
-  `True` needs `render`, and `False` does not.
-- **Behavior change.** `Scrape.do-Request-Cost` decides origin and billing.
-  Any response of status 400 or above with a positive cost is the target's
-  answer the gateway billed (its 400, 401, 403, 422, ...) and is now a
-  `ScrapeResult`, like a target 404/410, never retried. The gateway's own
-  errors carry no cost (or 0) and keep their classes: its 400 raises
-  `SdoValidationError`, its 401 `SdoAuthError`, both with `billed=False` — a
-  400 is no longer always billed. `billed` follows the cost header when
-  present, else the documented table. New `SdoAPIError.cost`;
-  `ScrapeResult.cost` now refuses values over 2**53 - 1.
-- **Behavior change.** More documented parameter rules are checked before any
-  request (`SdoConfigError`), each one the gateway rejects with a 400 or
-  documents as invalid: `show_frames`, `show_websocket_requests` and the
-  screenshot options require `return_json`; at most one screenshot option;
-  `particular_screenshot` excludes `play_with_browser`; `regional_geo_code`
-  requires `super_proxy` and excludes `geo_code`; `zip_code` requires
-  `super_proxy` and `geo_code`; `session_id` must be an integer 0–1000000 (it
-  now also accepts an `int`; `0` is sent); `retry_timeout` excludes `render`;
-  at most one of `custom_headers`, `extra_headers`, `forward_headers`; `width`
-  and `height` require `render`. `return_json` without `render` stays valid
-  (the gateway wraps the plain response in JSON).
-- **Behavior change.** A 510 is no longer retried and its default message is
-  "The request was canceled by the HTTP client (HTTP 510)." The gateway answers
-  510 only when the client cancelled the request before it finished; it is not
-  an upstream failure.
-- Field docs corrected: `pure_cookies` returns the target's `Set-Cookie`
-  header instead of `Scrape.do-Cookies` (the body is unchanged); `return_json`
-  returns network requests and content as JSON; `regional_geo_code`
-  does not override `geo_code` (the two are mutually exclusive); the module
-  docstring no longer claims only documented parameters are modelled.
-- **Behavior change.** The default client timeout is 70 seconds (was 60), so a
-  request that sets no gateway `timeout` (60 seconds by default) is never
-  abandoned just before its answer arrives. An explicit `timeout` or
-  `SDO_TIMEOUT` keeps its meaning.
+  at `q.scrape.do/api/v1`: `create`, `create_plugin`, `status`, `result`,
+  `list`, `cancel` and `me`, returning typed `Job`, `JobStatus` (with
+  `acquired_concurrency` and `limit_concurrency`), `JobPage`, `Task`,
+  `TaskResult` and `Account` objects. `create_plugin(key, params,
+  options=None)` submits a plugin job (`{"Plugin": {"Key": ..., "Params":
+  [...]}}`), one task per params entry, 1 to 1000 entries; a malformed key, an
+  empty or oversized list, or options that set `Targets` or `Plugin` (on
+  `create` too) raise `SdoConfigError`. `list(page=, page_size=, status=,
+  start_from=, start_to=, sort=)` (page size 1-100; start bounds as an aware
+  `datetime` or an RFC 3339 string) reads one page of the paginated job list
+  into a `JobPage` (`jobs`, `total_count`, `page_size`, `page_number`,
+  `total_pages`); `JOB_STATUSES`, `JOB_SORTS` and `MAX_PLUGIN_PARAMS` export
+  the accepted values. The token travels in the `X-Token` header; job and task
+  ids are validated before they enter the URL; a field of an unexpected type
+  reads as absent; `TaskResult.content_bytes()` decodes base64 content.
 
 ### Security
 
+- `brotli` is required at 1.2.1 or newer: earlier versions have an
+  out-of-bounds write in the decoder (PYSEC-2026-4322, GHSA-9v8h-qqgm-4m35),
+  reachable from a target's `Content-Encoding: br` response.
 - A target URL in an `SdoConfigError` has its `user:password@` masked and its
-  credential-shaped query values redacted (it was shown verbatim).
+  credential-shaped query values redacted.
 - The token is never logged or echoed: it is masked in every error message,
   retained error body and `httpx`/`httpcore`/`hpack` log record, and no stack
   frame that is live when the SDK raises holds it (error trackers that record
@@ -213,9 +170,8 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
 - A body is decoded through at most five `Content-Encoding` codings (urllib3's
   limit); a longer chain is a `SdoTransportError`, never retried, so a target
   cannot make the SDK stack a decoder per listed coding.
-- A GBK or GB18030 page decodes in memory proportional to its size: the
-  decoder's run-matching regex kept a backtrack point per byte, over 500 MiB
-  for a 4 MiB page of ASCII.
+- A GBK or GB18030 page decodes in memory proportional to its size, with no
+  backtracking regex over the body.
 - Redirects are never followed, including through an injected `http_client`.
 - Only Encoding Standard labels select a decoder, so a page cannot pick an
   arbitrary Python codec.
@@ -227,5 +183,3 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   list from the workflow, so a pull request cannot allowlist its own secret with
   a `.gitleaks.toml` or `.gitleaksignore`.
 - No telemetry and no request you did not make.
-
-[0.1.0]: https://github.com/scrape-do/sdo-sdk-python/releases/tag/v0.1.0

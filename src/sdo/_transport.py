@@ -292,7 +292,7 @@ def target_answered(reply: Reply) -> bool:
 
     The gateway charges the target statuses it counts as delivered (400, 401,
     404, 405 and more) and states the charge in ``Scrape.do-Request-Cost``; its
-    own errors — a parameter it cannot parse (``render=mert``), a refused token,
+    own errors — a parameter it cannot parse (``render=maybe``), a refused token,
     a blocked URL — are written before any cost is known and carry no cost
     header, and a failed fetch carries a cost of 0. A billed response is a
     result, so it is never retried. Without a readable positive cost the status

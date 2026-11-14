@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Migrating `sdo-sdk`
 
 This document is the authoritative record of breaking changes in the Python SDK
@@ -11,10 +12,16 @@ guidance is never rewritten.
 
 ## Compatibility policy
 
-`sdo-sdk` follows [Semantic Versioning](https://semver.org/). The public surface
-is the hand-maintained `sdo` spec, exercised against the cross-language
-conformance corpus that every SDK is tested against, so "what is public" is not a
-matter of opinion — it is what the corpus pins.
+`sdo-sdk` follows [Semantic Versioning](https://semver.org/). Before 1.0, a
+minor version may contain breaking changes; each is marked **Breaking** in
+[CHANGELOG.md](CHANGELOG.md) and described in this file. Patch versions never
+break.
+
+The request parameters, defaults and observable behaviour are shared by all sdo
+SDKs and pinned by the conformance corpus (`conformance.json`), which Scrape.do
+maintains against https://scrape.do/documentation, and the exported names and
+signatures are recorded in `api-surface.txt`, so "what is public" is not a
+matter of opinion.
 
 The public surface is:
 
@@ -25,8 +32,8 @@ The public surface is:
 - the shape of response models (field names, types, nullability);
 - error types and their attributes.
 
-Anything prefixed with a single underscore, anything under `sdo._internal`, and
-anything explicitly marked `# unstable` in its docstring is **not** public and
+Anything whose name starts with an underscore (a module such as
+`sdo._transport`, a function, a method or an attribute) is **not** public and
 may change in any release.
 
 ### Within a major version: additive only
@@ -86,7 +93,7 @@ warnings.filterwarnings("error", category=DeprecationWarning, module=r"sdo(\.|$)
   variable (or an explicit `token=` argument). There is no other auth path to
   migrate to or from.
 - Wire-format details of internal HTTP requests.
-- Anything in `sdo._internal` or marked `# unstable`.
+- Anything whose name starts with an underscore.
 
 ### How to upgrade safely
 
@@ -102,8 +109,10 @@ warnings.filterwarnings("error", category=DeprecationWarning, module=r"sdo(\.|$)
 
 No version has been published yet, so there is nothing to migrate from. The
 first releases are `0.x`: the additive-and-deprecate intent above is already in
-force, but the surface may still tighten before `1.0.0`. Pin a minor
-(`sdo-sdk==0.1.*`) if you need maximum stability during this period.
+force, but a minor version may still contain a breaking change before `1.0.0`;
+each one is marked **Breaking** in the changelog and described here. Patch
+versions never break. Pin a minor (`sdo-sdk==0.1.*`) if you need maximum
+stability during this period.
 
 ---
 

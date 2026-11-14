@@ -145,7 +145,7 @@ def test_unbilled_400_raises_validation_error_not_billed():
     assert ei.value.billed is False
 
 
-#: Exactly what the gateway writes for render=mert: it answers a parameter it
+#: Exactly what the gateway writes for render=maybe: it answers a parameter it
 #: cannot parse before authorizing the request, so no Scrape.do-Request-Cost.
 _GATEWAY_RENDER_400 = (
     '{"URL":"https://e.com","StatusCode":400,"Message":["\'Render\' parameter should boolean."],'
@@ -167,8 +167,8 @@ def test_gateway_400_bad_parameter_is_an_unbilled_validation_error():
         )
     )
     with client() as c, pytest.raises(SdoValidationError) as ei:
-        c.scrape(ScrapeConfig(U, extra_params={"render": "mert"}))
-    assert route.calls.last.request.url.params["render"] == "mert"
+        c.scrape(ScrapeConfig(U, extra_params={"render": "maybe"}))
+    assert route.calls.last.request.url.params["render"] == "maybe"
     assert route.call_count == 1  # never retried
     assert ei.value.message == "'Render' parameter should boolean."
     assert ei.value.billed is False

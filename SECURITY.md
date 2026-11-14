@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Security Policy
 
 `sdo` (`sdo-sdk`, `import sdo`) is the official Python SDK for Scrape.do. It is a
@@ -71,11 +72,11 @@ In scope:
 
 Out of scope:
 
-- Vulnerabilities in the Scrape.do API service itself — report those through
-  Scrape.do's main responsible-disclosure channel, not this repo.
+- Vulnerabilities in the Scrape.do API service — email security@scrape.do and
+  say the issue is in the Scrape.do service itself rather than in this
+  repository.
 - Issues that require a pre-compromised local machine, a malicious local config
   file the attacker already controls, or physical access.
-- Findings against internal build/spec tooling that is not distributed in this SDK.
 
 ## No-Telemetry Posture
 
@@ -98,7 +99,7 @@ minors. Upgrade to the latest minor to receive security updates.
 | Any older minor    | :x:                |
 
 If you are pinned to an older minor, the remediation for a reported vulnerability
-is to upgrade to the patched latest minor.
+is to upgrade to the patched latest minor (`pip install -U sdo-sdk`).
 
 ## Triage SLA
 
