@@ -11,22 +11,25 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
-authors = [{ name = "Scrape.do", email = "opensource@scrape.do" }]
+authors = [{ name = "Scrape.do", email = "support@scrape.do" }]
 keywords = ["scraping", "web-scraping", "scrapedo", "scrape.do", "proxy", "crawler", "sdk"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries",
     "Typing :: Typed",
 ]
 dependencies = [
-    "httpx>=0.24",
+    # >=0.26: the `proxy=` argument the README uses; <1: httpx 1.0 changes the API.
+    "httpx>=0.26,<1",
     # >=1.2: Decompressor.process(output_buffer_limit=...) bounds brotli output.
     # >=1.2.1: fixes an out-of-bounds write in the decoder (PYSEC-2026-4322).
     "brotli>=1.2.1",
