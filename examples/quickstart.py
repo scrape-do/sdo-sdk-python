@@ -8,7 +8,7 @@ python examples/quickstart.py
 from sdo import Client
 
 with Client() as client:  # reads SDO_TOKEN
-    result = client.scrape("https://httpbin.org/anything")
+    result = client.scrape("https://example.com")
     print("status:", result.status_code)
     print("cost:", result.cost)
     print("body:", result.text[:200])
