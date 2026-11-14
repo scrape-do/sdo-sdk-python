@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Cross-language conformance: this SDK must match the shared generated corpus
-(copied into this repo's tests by the codegen factory). Every section is
+"""Cross-language conformance: this SDK must match the corpus shared by the Go,
+JavaScript and Python SDKs (maintained by Scrape.do against
+https://scrape.do/documentation; never edited here). Every section is
 consumed here; a case whose ``skip`` names ``py`` is skipped, nothing else. The
 corpus must match its sha256 sidecar, and a section, key or case field this
 harness does not know fails the run (so a new expectation cannot be ignored)."""
