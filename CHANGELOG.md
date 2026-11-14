@@ -144,10 +144,6 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
   ids are validated before they enter the URL; a field of an unexpected type
   reads as absent; `TaskResult.content_bytes()` decodes base64 content.
 
-### Fixed
-
-- The postal-code option is sent as the documented `zipcode` query parameter.
-
 ### Security
 
 - `brotli` is required at 1.2.1 or newer: earlier versions have an
