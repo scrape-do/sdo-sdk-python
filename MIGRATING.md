@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Migrating `sdo-sdk`
 
 This document is the authoritative record of breaking changes in the Python SDK

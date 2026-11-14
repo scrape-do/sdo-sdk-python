@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Contributing to sdo-sdk
 
 Thanks for taking the time to help out — contributions are genuinely welcome, whether that's a bug report, a failing test that pins down an edge case, a docs fix, or a new feature. This guide gets you from a fresh clone to a passing test run, and explains the few conventions we hold the line on.

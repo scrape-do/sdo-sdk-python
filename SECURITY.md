@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Security Policy
 
 `sdo` (`sdo-sdk`, `import sdo`) is the official Python SDK for Scrape.do. It is a
