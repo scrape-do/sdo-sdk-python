@@ -44,8 +44,9 @@ with Client(token="YOUR_TOKEN") as client:
     markdown = client.scrape(cfg).text
 ```
 
-Runnable programs are in [`examples/`](examples/): with `sdo-sdk` installed,
-set `SDO_TOKEN` and run `python examples/quickstart.py`.
+Runnable programs are in
+[`examples/`](https://github.com/scrape-do/sdo-sdk-python/tree/main/examples):
+with `sdo-sdk` installed, set `SDO_TOKEN` and run `python examples/quickstart.py`.
 
 `ScrapeConfig` fields mirror the documented Scrape.do parameters. Values that
 mean "unset" (`None`, `False`, `0`, `""`, empty list or dict) are not sent;
@@ -327,7 +328,7 @@ of Async API webhooks: to be notified when a job finishes, set the job option
 
 Releases are built by GitHub Actions and published to PyPI by trusted
 publishing, only from `main` and only after a maintainer approves; see
-[CONTRIBUTING.md](CONTRIBUTING.md#ci-workflows).
+[CONTRIBUTING.md](https://github.com/scrape-do/sdo-sdk-python/blob/main/CONTRIBUTING.md#releasing).
 
 ## Responsible use
 
@@ -341,5 +342,5 @@ affiliated with them.
 
 - API documentation: https://scrape.do/documentation
 - Bugs and feature requests for this repository: [GitHub Issues](https://github.com/scrape-do/sdo-sdk-python/issues). Account, billing and API questions: support@scrape.do.
-- Security issues: see [SECURITY.md](SECURITY.md). Never post an API token in an issue.
-- [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md) · [MIGRATING.md](MIGRATING.md) · [Apache-2.0](LICENSE)
+- Security issues: see [SECURITY.md](https://github.com/scrape-do/sdo-sdk-python/blob/main/SECURITY.md). Never post an API token in an issue.
+- [CONTRIBUTING.md](https://github.com/scrape-do/sdo-sdk-python/blob/main/CONTRIBUTING.md) · [CHANGELOG.md](https://github.com/scrape-do/sdo-sdk-python/blob/main/CHANGELOG.md) · [MIGRATING.md](https://github.com/scrape-do/sdo-sdk-python/blob/main/MIGRATING.md) · [Apache-2.0](https://github.com/scrape-do/sdo-sdk-python/blob/main/LICENSE)
