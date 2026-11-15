@@ -19,9 +19,8 @@ permissions: {}
 # those calls from the self-hosted runners.
 
 jobs:
-  # --- secret scan (full git history) -------------------------------------
-  # gitleaks-action v2 requires a paid license for organization repos, so we
-  # run a pinned, checksum-verified gitleaks binary instead (license-free).
+  # Secret scanning across the full git history. Uses a version-pinned, checksum
+  # -verified gitleaks binary (license-free, no org entitlement required).
   gitleaks:
     runs-on: ubuntu-latest
     permissions:
@@ -31,31 +30,22 @@ jobs:
         with:
           fetch-depth: 0 # full history for a complete secret scan
           persist-credentials: false
-      - name: Install gitleaks (pinned version and SHA-256)
+      - name: Scan git history for secrets (gitleaks)
         env:
           GITLEAKS_VERSION: 8.30.1
-          # Pinned here, not read from a checksums file on the same release,
-          # so a replaced release asset fails the check.
           GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
           set -euo pipefail
-          FILE="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          cd "$RUNNER_TEMP"
-          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o "$FILE" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${FILE}"
-          echo "${GITLEAKS_SHA256}  ${FILE}" | sha256sum -c -
-          tar -xzf "$FILE" gitleaks
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
-          ./gitleaks version
-      - name: Scan git history for secrets
-        # The config and the ignore list come from this workflow, never from the
-        # checkout: a pull request could otherwise add a .gitleaks.toml or a
-        # .gitleaksignore that allowlists the secret it introduces.
-        run: |
-          set -euo pipefail
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          # The config and the ignore list come from this workflow, never from the
+          # checkout: a pull request could otherwise add a .gitleaks.toml or a
+          # .gitleaksignore that allowlists the secret it introduces.
           cfg="$(mktemp -d "$RUNNER_TEMP/gitleaks.XXXXXX")"
           printf '[extend]\nuseDefault = true\n' > "$cfg/gitleaks.toml"
-          gitleaks git "$GITHUB_WORKSPACE" --redact --no-banner \
+          ./gitleaks git . --no-banner --redact --exit-code 1 \
             --config "$cfg/gitleaks.toml" --gitleaks-ignore-path "$cfg"
 
   # --- dependency vulnerability scan (OSV) --------------------------------
@@ -105,13 +95,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Generate SBOM (SPDX JSON) and upload as a workflow artifact
+      - name: Generate SBOM (syft)
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: .
           format: spdx-json
-          artifact-name: sdo-sdk-python.spdx.json
           output-file: sdo-sdk-python.spdx.json
+          artifact-name: sdo-sdk-python.spdx.json
           upload-artifact: true
 
   # --- OpenSSF Scorecard ----------------------------------------------------
@@ -136,11 +126,19 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
         with:
           results_file: results.sarif
           results_format: sarif
           publish_results: false
-      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - name: Upload Scorecard SARIF artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 5
+      - name: Upload Scorecard results to code scanning
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: results.sarif

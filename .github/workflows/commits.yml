@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: Apache-2.0
+name: commits
+
+# A workflow of its own so that editing a pull request's title or description
+# (`edited`) re-runs only this check, not the whole CI.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  # Every commit of a pull request needs a Conventional Commit subject and a DCO
+  # sign-off, and the pull request title, which becomes the squash commit's
+  # subject, must be a Conventional Commit subject too (see CONTRIBUTING.md).
+  commits:
+    name: commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Conventional Commit subjects and DCO sign-offs
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          fail=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            subject=$(git log -1 --format=%s "$sha")
+            if ! printf '%s\n' "$subject" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9][a-z0-9/_.-]*\))?!?: .+'; then
+              echo "::error::$sha: not a Conventional Commit subject: $subject"; fail=1
+            fi
+            # Bots (Dependabot) cannot certify the DCO; everyone else signs off.
+            case "$(git log -1 --format=%ae "$sha")" in *'[bot]@users.noreply.github.com') continue ;; esac
+            if ! git log -1 --format=%B "$sha" | grep -qE '^Signed-off-by: .+ <.+@.+>$'; then
+              echo "::error::$sha: missing Signed-off-by trailer (commit with git commit -s)"; fail=1
+            fi
+          done
+          # The squash merge uses the pull request title as the commit subject.
+          if ! printf '%s\n' "$TITLE" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9][a-z0-9/_.-]*\))?!?: .+'; then
+            echo "::error::pull request title is not a Conventional Commit subject: $TITLE"; fail=1
+          fi
+          exit "$fail"

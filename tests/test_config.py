@@ -49,7 +49,8 @@ def test_well_formed_target_url_is_sent_as_given(url):
 
 
 def test_fields_after_url_are_keyword_only():
-    """So a new field can be added in spec order without breaking callers."""
+    """So a new field can go in the shared parameter order the corpus pins
+    without breaking callers."""
     with pytest.raises(TypeError):
         ScrapeConfig(U, True)  # type: ignore[misc]
     assert ScrapeConfig(U, render=True).render is True

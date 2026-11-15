@@ -85,13 +85,17 @@ import warnings
 warnings.filterwarnings("error", category=DeprecationWarning, module=r"sdo(\.|$)")
 ```
 
+### Authentication stability
+
+Authentication is token-only: an explicit `token=` argument, else the
+`SDO_TOKEN` environment variable. Removing or renaming either, or adding any
+other required auth mechanism, is a breaking change and will be called out
+here.
+
 ### What is explicitly *not* covered
 
 - Behavior of the remote Scrape.do API itself (rate limits, credit accounting,
   target-site responses). The SDK transports it; it does not version it.
-- Authentication mechanism. Auth is token-only via the `SDO_TOKEN` environment
-  variable (or an explicit `token=` argument). There is no other auth path to
-  migrate to or from.
 - Wire-format details of internal HTTP requests.
 - Anything whose name starts with an underscore.
 

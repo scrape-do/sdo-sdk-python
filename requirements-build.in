@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # The release build chain, compiled with hashes into requirements-build.txt:
 #
 #   uv pip compile requirements-build.in --universal --python-version 3.11 \
