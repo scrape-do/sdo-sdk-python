@@ -36,8 +36,8 @@ jobs:
       # itself is installed without resolving anything else.
       - run: python -m pip install --require-hashes -r requirements-dev.txt
       - run: python -m pip install --no-deps --no-build-isolation -e .
-      - run: ruff check src tests tools
-      - run: ruff format --check src tests tools
+      - run: ruff check src tests tools examples
+      - run: ruff format --check src tests tools examples
 
   typecheck:
     runs-on: ubuntu-latest

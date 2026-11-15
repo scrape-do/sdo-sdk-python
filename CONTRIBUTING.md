@@ -27,8 +27,8 @@ python -m pip install --no-deps --no-build-isolation -e .
 pytest
 
 # 4. Lint, format and type-check
-ruff check src tests tools
-ruff format --check src tests tools
+ruff check src tests tools examples
+ruff format --check src tests tools examples
 mypy
 ```
 
@@ -173,7 +173,7 @@ Before you open a PR, confirm:
 
 - [ ] A test was added or updated and it fails without your change (TDD).
 - [ ] `pytest` passes, including the conformance suite, with the 99% coverage floor.
-- [ ] `ruff check src tests tools` and `ruff format --check src tests tools` pass.
+- [ ] `ruff check src tests tools examples` and `ruff format --check src tests tools examples` pass.
 - [ ] `mypy` passes.
 - [ ] `tests/conformance.json` was **not** edited.
 - [ ] If the public surface changed, `api-surface.txt` was regenerated (`python tools/api_surface.py > api-surface.txt`) and the change is noted in CHANGELOG.md.
