@@ -333,10 +333,8 @@ publishing, only from `main` and only after a maintainer approves; see
 ## Responsible use
 
 You are responsible for complying with the terms of service, `robots.txt`, and
-applicable laws (CFAA, GDPR, CCPA, etc.) of any site you scrape, and for not
-collecting personal or copyrighted data unlawfully. Amazon, Walmart, Google and
-other names are trademarks of their respective owners; Scrape.do is not
-affiliated with them.
+applicable laws of any site you scrape. Third-party names are trademarks of their
+respective owners; Scrape.do is not affiliated with them.
 
 ## Documentation, support and security
 
