@@ -128,7 +128,7 @@ A few habits the linter won't catch but we care about:
 
 ## Commits and sign-off
 
-We use two conventions on every commit. Both are checked in CI by the `commits` job, which fails a pull request until every commit has a Conventional Commit subject and a `Signed-off-by` trailer.
+We use two conventions on every commit. Both are checked in CI by the `commits` job, which fails a pull request until every commit has a Conventional Commit subject and a `Signed-off-by` trailer. It checks the pull request title the same way, because it becomes the squash commit's subject.
 
 ### Conventional Commits
 
@@ -209,7 +209,7 @@ This repository is public. Practically, for you as a contributor, this means: ke
 
 | Workflow | Runs on | What it does |
 |----------|---------|--------------|
-| `ci.yml` | every push to `main` and every pull request | `ruff` lint and format check; `mypy --strict`; the test suite with the 99% line + branch coverage floor on Python 3.11–3.14 (Linux), plus macOS and Windows on 3.13, including the cross-language conformance suite and its integrity check; the public-API snapshot (`api-surface.txt`) must be up to date; on pull requests, a `commits` job checks every commit's subject and sign-off; CodeQL code scanning. |
+| `ci.yml` | every push to `main` and every pull request | `ruff` lint and format check; `mypy --strict`; the test suite with the 99% line + branch coverage floor on Python 3.11–3.14 (Linux), plus macOS and Windows on 3.13, including the cross-language conformance suite and its integrity check; the public-API snapshot (`api-surface.txt`) must be up to date; on pull requests, a `commits` job checks every commit's subject and sign-off and the pull request title; CodeQL code scanning. |
 | `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner over the pinned requirement files, `pip-audit`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
 | `publish.yml` | a version tag only | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test. |
 | Dependabot | weekly | update pull requests for the GitHub Actions, taken only after a 7-day cooldown, and security-advisory pull requests for the pinned Python requirements, which the cooldown does not delay (version bumps of those are recompiled by hand with uv, see [Dev setup](#dev-setup)); each one runs the checks above. |
