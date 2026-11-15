@@ -175,11 +175,14 @@ The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
 - Redirects are never followed, including through an injected `http_client`.
 - Only Encoding Standard labels select a decoder, so a page cannot pick an
   arbitrary Python codec.
-- CI: every job runs on GitHub-hosted runners, so code from a pull request
-  never reaches the org's persistent self-hosted runners (only CodeQL runs
-  there, for same-repository events; a fork's pull request is analysed once
-  merged); every checkout drops its token
+- CI: code from a fork's pull request never reaches the organisation's
+  persistent self-hosted runners: every job runs on GitHub-hosted runners
+  except CodeQL (same-repository events only; a fork's pull request is
+  analysed once merged) and Scorecard (never on a pull request); every
+  checkout drops its token
   (`persist-credentials: false`); and gitleaks scans with a config and ignore
   list from the workflow, so a pull request cannot allowlist its own secret with
   a `.gitleaks.toml` or `.gitleaksignore`.
 - No telemetry and no request you did not make.
+
+[Unreleased]: https://github.com/scrape-do/sdo-sdk-python/commits/main
