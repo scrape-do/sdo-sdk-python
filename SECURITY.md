@@ -24,7 +24,7 @@ Report privately through either channel — both reach the maintainer directly:
    the full report history in one place, and is the channel we use to issue the
    GHSA advisory and request a CVE.
 
-2. **Email:** `security@scrape.do`
+2. **Email:** `support@scrape.do`
    Use this if you cannot use GitHub's private reporting, or for anything
    sensitive enough that you'd rather not file even a private GitHub draft. PGP is
    available on request — email first and we'll exchange a key before you send
@@ -72,7 +72,7 @@ In scope:
 
 Out of scope:
 
-- Vulnerabilities in the Scrape.do API service — email security@scrape.do and
+- Vulnerabilities in the Scrape.do API service — email support@scrape.do and
   say the issue is in the Scrape.do service itself rather than in this
   repository.
 - Issues that require a pre-compromised local machine, a malicious local config
