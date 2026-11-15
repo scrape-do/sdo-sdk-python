@@ -55,7 +55,7 @@ _MIN_ENV_TIMEOUT = 0.001
 def _user_agent() -> str:
     """The only client-identifying header, and deliberately the whole of it.
 
-    No OS and no interpreter version: the spec fixes the User-Agent at
+    No OS and no interpreter version: the conformance corpus fixes the User-Agent at
     ``sdo-sdk-<lang>/<version>``, and anything appended is extra client
     fingerprinting the no-telemetry rule forbids.
     """
