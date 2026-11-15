@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # sdo — Python SDK for Scrape.do
 
-[![ci](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/ci.yml) [![security](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/security.yml) [![license](https://img.shields.io/github/license/scrape-do/sdo-sdk-python)](LICENSE)
+[![ci](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/ci.yml) [![security](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/scrape-do/sdo-sdk-python/actions/workflows/security.yml) [![license](https://img.shields.io/github/license/scrape-do/sdo-sdk-python)](https://github.com/scrape-do/sdo-sdk-python/blob/main/LICENSE)
 
 The official Python SDK for the [Scrape.do](https://scrape.do) web scraping API.
 Token-only auth, transparent compression, a typed result, and a generic plugin
