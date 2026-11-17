@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""JS rendering + geo targeting + CSS extraction (needs sdo-sdk[parse])."""
+"""JS rendering + geo targeting + CSS extraction (needs sdo-client[parse])."""
 
 from sdo import Client, ScrapeConfig
 

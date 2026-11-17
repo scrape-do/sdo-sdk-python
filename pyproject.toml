@@ -4,7 +4,7 @@ requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sdo-sdk"
+name = "sdo-client"
 dynamic = ["version"]
 description = "Official Python SDK for the Scrape.do web-scraping API"
 readme = "README.md"

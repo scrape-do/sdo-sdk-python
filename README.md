@@ -8,7 +8,7 @@ Token-only auth, transparent compression, a typed result, and a generic plugin
 core — no telemetry, no UI. Every parameter is described in the
 [API documentation](https://scrape.do/documentation).
 
-> Distribution name: **`sdo-sdk`** · import name: **`sdo`**. The `sdo`
+> Distribution name: **`sdo-client`** · import name: **`sdo`**. The `sdo`
 > command-line tool is not on PyPI: install it with Homebrew
 > (`brew install scrape-do/tap/sdo`) or Scoop, see
 > [sdo-cli](https://github.com/scrape-do/sdo-cli). The PyPI project named `sdo`
@@ -17,9 +17,9 @@ core — no telemetry, no UI. Every parameter is described in the
 ## Install
 
 ```bash
-pip install sdo-sdk
+pip install sdo-client
 # optional CSS/XPath extraction via .selector():
-pip install "sdo-sdk[parse]"
+pip install "sdo-client[parse]"
 ```
 
 Requires Python 3.11+. Brotli decompression comes from `brotli` (1.2.1 or newer), a
@@ -37,7 +37,7 @@ with Client(token="YOUR_TOKEN") as client:
     print(result.status_code)        # the TARGET's status code
     print(result.cost)               # credits this request cost
     print(result.text[:200])         # decoded HTML
-    title = result.selector().css("title::text").get()  # needs sdo-sdk[parse]
+    title = result.selector().css("title::text").get()  # needs sdo-client[parse]
 
     # Reuse a config, or build one inline:
     cfg = ScrapeConfig(url="https://example.com", super_proxy=True, output="markdown")
@@ -46,7 +46,7 @@ with Client(token="YOUR_TOKEN") as client:
 
 Runnable programs are in
 [`examples/`](https://github.com/scrape-do/sdo-sdk-python/tree/main/examples):
-with `sdo-sdk` installed, set `SDO_TOKEN` and run `python examples/quickstart.py`.
+with `sdo-client` installed, set `SDO_TOKEN` and run `python examples/quickstart.py`.
 
 `ScrapeConfig` fields mirror the documented Scrape.do parameters. Values that
 mean "unset" (`None`, `False`, `0`, `""`, empty list or dict) are not sent;

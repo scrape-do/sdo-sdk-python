@@ -8,7 +8,7 @@ Before 1.0, a minor version may contain breaking changes; each is marked
 
 ## [Unreleased]
 
-The first release of `sdo-sdk`, the official Python SDK for the Scrape.do API
+The first release of `sdo-client`, the official Python SDK for the Scrape.do API
 (import name `sdo`). Requires Python 3.11 or newer.
 
 ### Added

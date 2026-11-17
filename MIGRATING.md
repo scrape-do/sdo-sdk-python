@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# Migrating `sdo-sdk`
+# Migrating `sdo-client`
 
 This document is the authoritative record of breaking changes in the Python SDK
-(`sdo-sdk` on PyPI). It exists so that upgrading is never a guessing game: every
+(`sdo-client` on PyPI). It exists so that upgrading is never a guessing game: every
 removal that lands in a new major version is documented here, with the
 deprecation that preceded it and the replacement you should adopt.
 
@@ -12,7 +12,7 @@ guidance is never rewritten.
 
 ## Compatibility policy
 
-`sdo-sdk` follows [Semantic Versioning](https://semver.org/). Before 1.0, a
+`sdo-client` follows [Semantic Versioning](https://semver.org/). Before 1.0, a
 minor version may contain breaking changes; each is marked **Breaking** in
 [CHANGELOG.md](CHANGELOG.md) and described in this file. Patch versions never
 break.
@@ -101,7 +101,7 @@ here.
 
 ### How to upgrade safely
 
-1. Pin a major in your dependency spec, e.g. `sdo-sdk>=1.4,<2`.
+1. Pin a major in your dependency spec, e.g. `sdo-client>=1.4,<2`.
 2. Enable `error::DeprecationWarning` in CI and fix warnings as they appear, on
    your own schedule, while still on the current major.
 3. When the next major is published, read its section here, apply the documented
@@ -115,7 +115,7 @@ No version has been published yet, so there is nothing to migrate from. The
 first releases are `0.x`: the additive-and-deprecate intent above is already in
 force, but a minor version may still contain a breaking change before `1.0.0`;
 each one is marked **Breaking** in the changelog and described here. Patch
-versions never break. Pin a minor (`sdo-sdk==0.1.*`) if you need maximum
+versions never break. Pin a minor (`sdo-client==0.1.*`) if you need maximum
 stability during this period.
 
 ---
