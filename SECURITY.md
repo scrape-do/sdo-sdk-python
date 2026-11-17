@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # Security Policy
 
-`sdo` (`sdo-sdk`, `import sdo`) is the official Python SDK for Scrape.do. It is a
+`sdo` (`sdo-client`, `import sdo`) is the official Python SDK for Scrape.do. It is a
 token-bearing HTTP client: it holds your Scrape.do API token and attaches it to
 every outbound request. The token is the sensitive asset this SDK handles, so we
 treat any issue that can leak, log, mishandle, or weaken protection of that token
@@ -99,7 +99,7 @@ minors. Upgrade to the latest minor to receive security updates.
 | Any older minor    | :x:                |
 
 If you are pinned to an older minor, the remediation for a reported vulnerability
-is to upgrade to the patched latest minor (`pip install -U sdo-sdk`).
+is to upgrade to the patched latest minor (`pip install -U sdo-client`).
 
 ## Triage SLA
 

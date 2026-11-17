@@ -3,7 +3,7 @@
 
 Thanks for taking the time to help out — contributions are genuinely welcome, whether that's a bug report, a failing test that pins down an edge case, a docs fix, or a new feature. This guide gets you from a fresh clone to a passing test run, and explains the few conventions we hold the line on.
 
-`sdo` is Scrape.do's official open-source tooling. This repository is the Python SDK: package `sdo-sdk` on PyPI, imported as `import sdo`. It's a thin, well-tested wrapper over the Scrape.do API built on [`httpx`](https://www.python-httpx.org/).
+`sdo` is Scrape.do's official open-source tooling. This repository is the Python SDK: package `sdo-client` on PyPI, imported as `import sdo`. It's a thin, well-tested wrapper over the Scrape.do API built on [`httpx`](https://www.python-httpx.org/).
 
 The project is developed Solo+AI: the founder is the sole approver and final reviewer. That means review may be asynchronous, and design discussion happens up front (see [Changing the public surface](#changing-the-public-surface)). Don't let that discourage you — clear, small, well-tested PRs get merged.
 

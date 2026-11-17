@@ -127,12 +127,12 @@ jobs:
           for delay in 15 30 60 120 240; do
             # Not hash-pinned on purpose: this installs the version just published,
             # whose hashes exist only on the index, to prove a user's install works.
-            if python -m pip install --no-cache-dir "${index[@]}" "sdo-sdk==${SDO_EXPECTED_VERSION}"; then
+            if python -m pip install --no-cache-dir "${index[@]}" "sdo-client==${SDO_EXPECTED_VERSION}"; then
               python -c "import os, sdo; assert sdo.__version__ == os.environ['SDO_EXPECTED_VERSION'], sdo.__version__; print('installed', sdo.__version__)"
               exit 0
             fi
-            echo "sdo-sdk==${SDO_EXPECTED_VERSION} is not installable yet; retrying in ${delay}s"
+            echo "sdo-client==${SDO_EXPECTED_VERSION} is not installable yet; retrying in ${delay}s"
             sleep "$delay"
           done
-          echo "::error::sdo-sdk==${SDO_EXPECTED_VERSION} never became installable"
+          echo "::error::sdo-client==${SDO_EXPECTED_VERSION} never became installable"
           exit 1

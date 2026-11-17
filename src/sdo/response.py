@@ -157,13 +157,13 @@ class ScrapeResult:
         """Return a ``parsel.Selector`` for CSS/XPath extraction (typed ``Any``
         so the optional dependency is not needed to resolve the annotation).
 
-        ``parsel`` is an optional dependency; install ``sdo-sdk[parse]``.
+        ``parsel`` is an optional dependency; install ``sdo-client[parse]``.
         """
         try:
             from parsel import Selector
         except ImportError as exc:  # pragma: no cover - optional dep
             raise ImportError(
-                "selector() needs the optional 'parsel' dependency: pip install 'sdo-sdk[parse]'"
+                "selector() needs the optional 'parsel' dependency: pip install 'sdo-client[parse]'"
             ) from exc
         return Selector(text=self.text)
 
