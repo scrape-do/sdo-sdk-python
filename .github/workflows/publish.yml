@@ -14,13 +14,22 @@ name: publish
 on:
   push:
     tags: ["v*"]
+  # Manual run: checks the trusted-publisher token exchange for this workflow
+  # without uploading anything (see the publisher-check job).
+  workflow_dispatch:
+    inputs:
+      index:
+        description: Index to check against
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
 
 permissions: {}
 
 jobs:
   build:
-    # Forks and mirrors never publish.
-    if: github.repository_owner == 'scrape-do'
+    # Forks and mirrors never publish; a manual run only checks the publisher.
+    if: github.repository_owner == 'scrape-do' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -136,3 +145,50 @@ jobs:
           done
           echo "::error::sdo-client==${SDO_EXPECTED_VERSION} never became installable"
           exit 1
+
+  # `workflow_dispatch` only: asks the chosen index to exchange this job's OIDC
+  # token for an upload token, the same exchange the publish action performs,
+  # and prints the claims the index matches against and its answer. Nothing is
+  # uploaded and a minted token is never printed (it expires on its own). On
+  # an index with a pending publisher, a successful exchange creates the empty
+  # project, as the first upload would.
+  publisher-check:
+    if: github.repository_owner == 'scrape-do' && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.index == 'pypi' && 'release' || 'prerelease' }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Exchange the GitHub OIDC token with the index
+        env:
+          INDEX_HOST: ${{ inputs.index == 'pypi' && 'pypi.org' || 'test.pypi.org' }}
+        run: |
+          set -euo pipefail
+          audience="$(curl -sSf "https://${INDEX_HOST}/_/oidc/audience" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["audience"])')"
+          id_token="$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["value"])')"
+          echo "::add-mask::$id_token"
+          ID_TOKEN="$id_token" python3 - <<'PY'
+          import base64, json, os
+          payload = os.environ["ID_TOKEN"].split(".")[1]
+          claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+          for k in ("sub", "repository", "repository_owner", "repository_owner_id", "repository_id",
+                    "workflow_ref", "job_workflow_ref", "environment", "ref", "event_name", "aud"):
+              print(f"{k}: {json.dumps(claims.get(k))}")
+          PY
+          body="$(ID_TOKEN="$id_token" python3 -c 'import json, os; print(json.dumps({"token": os.environ["ID_TOKEN"]}))')"
+          code="$(curl -sS -o mint.json -w '%{http_code}' -X POST -H "Content-Type: application/json" \
+            --data "$body" "https://${INDEX_HOST}/_/oidc/mint-token")"
+          echo "exchange with ${INDEX_HOST}: HTTP $code"
+          python3 - <<'PY'
+          import json
+          d = json.load(open("mint.json"))
+          if d.get("success"):
+              print("The index accepted the token for this workflow (upload token not printed).")
+          else:
+              print(json.dumps({k: v for k, v in d.items() if k != "token"}, indent=2))
+          PY
+          rm -f mint.json
+          [ "$code" = "200" ]
