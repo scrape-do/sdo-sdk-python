@@ -8,6 +8,8 @@ Before 1.0, a minor version may contain breaking changes; each is marked
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-18
+
 The first release of `sdo-client`, the official Python SDK for the Scrape.do API
 (import name `sdo`). Requires Python 3.11 or newer.
 
@@ -185,4 +187,5 @@ The first release of `sdo-client`, the official Python SDK for the Scrape.do API
   a `.gitleaks.toml` or `.gitleaksignore`.
 - No telemetry and no request you did not make.
 
-[Unreleased]: https://github.com/scrape-do/sdo-sdk-python/commits/main
+[Unreleased]: https://github.com/scrape-do/sdo-sdk-python/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/scrape-do/sdo-sdk-python/releases/tag/v0.1.0
