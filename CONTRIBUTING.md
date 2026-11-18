@@ -231,12 +231,89 @@ approval:
 | `vX.Y.Z-rc.N` | `X.Y.ZrcN` (PEP 440) | TestPyPI | `prerelease` |
 | `vX.Y.Z` | `X.Y.Z` | PyPI | `release` |
 
-Before the first tag, create both environments with required reviewers and a
-deployment rule limited to `v*` tags, and add a trusted publisher on TestPyPI
-and on PyPI for this repository, workflow `publish.yml` and the matching
-environment. The project does not exist on either index yet, so each one is a
-"pending" publisher: the first upload through it creates the project. No API
-token is stored anywhere.
+### Trusted publishers (once per index)
+
+Both environments exist with a required reviewer and a deployment rule limited
+to `v*` tags. Each index needs a trusted publisher for this workflow; until the
+first upload the project does not exist, so it is a **pending** publisher, and
+the first successful exchange creates the project. No API token is stored
+anywhere.
+
+On each index, sign in with an account that has 2FA, open **Account settings →
+Publishing → Add a new pending publisher → GitHub** and enter:
+
+| Field | test.pypi.org | pypi.org |
+|-------|---------------|----------|
+| PyPI Project Name | `sdo-client` | `sdo-client` |
+| Owner | `scrape-do` | `scrape-do` |
+| Repository name | `sdo-sdk-python` | `sdo-sdk-python` |
+| Workflow name | `publish.yml` | `publish.yml` |
+| Environment name | `prerelease` | `release` |
+
+TestPyPI is a separate site with separate accounts. Once the project exists,
+its publishers are under the project's **Manage → Publishing** instead.
+
+### Checking a publisher without uploading
+
+A manual run of `publish.yml` performs only the token exchange (the
+`publisher-check` job) and prints the claims the index matched and its answer.
+The environments accept only `v*` tags, so allow `main` for the duration of the
+run and remove the rule afterwards:
+
+```sh
+env=prerelease   # or release, for index=pypi
+id=$(gh api -X POST "repos/scrape-do/sdo-sdk-python/environments/$env/deployment-branch-policies" \
+  -f name=main -f type=branch --jq .id)
+gh workflow run publish.yml --repo scrape-do/sdo-sdk-python --ref main -f index=testpypi   # or pypi
+# approve the run in the environment, wait for it to finish, then:
+gh api -X DELETE "repos/scrape-do/sdo-sdk-python/environments/$env/deployment-branch-policies/$id"
+```
+
+`HTTP 200` means the index accepts the workflow. `invalid-publisher` means no
+publisher matches the claims: compare the printed `repository`, `environment`
+and `job_workflow_ref` with the table above.
+
+### Cutting a release
+
+1. Open a pull request `chore(release): vX.Y.Z` that sets
+   `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate) and, in `CHANGELOG.md`,
+   moves the `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD`, leaves an
+   empty `## [Unreleased]` above it and updates the links at the bottom:
+
+   ```markdown
+   [Unreleased]: https://github.com/scrape-do/sdo-sdk-python/compare/vX.Y.Z...HEAD
+   [X.Y.Z]: https://github.com/scrape-do/sdo-sdk-python/releases/tag/vX.Y.Z
+   ```
+
+2. Squash-merge it once CI is green, then tag the merge commit on `main` with a
+   signed tag and push it:
+
+   ```sh
+   git switch main && git pull --ff-only
+   git tag -s vX.Y.Z -m vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+3. `publish.yml` builds, then waits for approval in `release` (`prerelease` for
+   a candidate). Approve it under the run's **Review deployments**.
+4. The `smoke` job installs the version from the index and imports it. Check it
+   yourself in a clean environment too:
+
+   ```sh
+   python -m venv /tmp/sdo-check && /tmp/sdo-check/bin/pip install sdo-client==X.Y.Z
+   /tmp/sdo-check/bin/python -c "import sdo; print(sdo.__version__)"
+   ```
+
+5. Create the GitHub release for the tag with the version's CHANGELOG section
+   as notes:
+
+   ```sh
+   gh release create vX.Y.Z --repo scrape-do/sdo-sdk-python --verify-tag \
+     --title vX.Y.Z --notes-file notes.md
+   ```
+
+A version on PyPI can never be uploaded again, even after it is deleted, so a
+broken release is fixed with a new patch version (and the broken one yanked).
 
 ---
 
