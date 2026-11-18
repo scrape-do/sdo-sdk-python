@@ -253,6 +253,11 @@ Publishing → Add a new pending publisher → GitHub** and enter:
 TestPyPI is a separate site with separate accounts. Once the project exists,
 its publishers are under the project's **Manage → Publishing** instead.
 
+This repository has GitHub's immutable OIDC subject claim
+(`repo:scrape-do@<owner id>/sdo-sdk-python@<repo id>:...`). PyPI matches the
+publisher on the repository, owner ID, workflow and environment, not on `sub`,
+so it accepts it (unlike npm, see `sdo-sdk-js`), and no token fallback is needed.
+
 ### Checking a publisher without uploading
 
 A manual run of `publish.yml` performs only the token exchange (the
@@ -294,20 +299,28 @@ and `job_workflow_ref` with the table above.
    git push origin vX.Y.Z
    ```
 
+   The organization's tag ruleset restricts creating `v*` tags, so only a
+   maintainer allowed to bypass it can push one; the push reports the bypass.
+
 3. `publish.yml` builds, then waits for approval in `release` (`prerelease` for
    a candidate). Approve it under the run's **Review deployments**.
 4. The `smoke` job installs the version from the index and imports it. Check it
-   yourself in a clean environment too:
+   yourself in a clean environment too, with Python 3.11 or newer (an older
+   interpreter finds no installable version, `from versions: none`):
 
    ```sh
-   python -m venv /tmp/sdo-check && /tmp/sdo-check/bin/pip install sdo-client==X.Y.Z
+   python3.12 -m venv /tmp/sdo-check && /tmp/sdo-check/bin/pip install sdo-client==X.Y.Z
    /tmp/sdo-check/bin/python -c "import sdo; print(sdo.__version__)"
    ```
 
-5. Create the GitHub release for the tag with the version's CHANGELOG section
-   as notes:
+5. Create the GitHub release for the tag. The notes are an install line and
+   the version's CHANGELOG section, without its heading:
 
    ```sh
+   v=X.Y.Z
+   { printf '```sh\npip install sdo-client==%s\n```\n\n' "$v"
+     awk -v h="## [$v]" 'index($0, h) == 1 {on=1; next} on && /^(## |\[Unreleased\]:)/ {exit} on' CHANGELOG.md
+   } > notes.md
    gh release create vX.Y.Z --repo scrape-do/sdo-sdk-python --verify-tag \
      --title vX.Y.Z --notes-file notes.md
    ```
