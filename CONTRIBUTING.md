@@ -212,19 +212,21 @@ This repository is public. Practically, for you as a contributor, this means: ke
 | `ci.yml` | every push to `main` and every pull request | `ruff` lint and format check; `mypy --strict`; the test suite with the 99% line + branch coverage floor on Python 3.11–3.14 (Linux), plus macOS and Windows on 3.13, including the cross-language conformance suite and its integrity check; the public-API snapshot (`api-surface.txt`) must be up to date; CodeQL code scanning. |
 | `commits.yml` | every pull request: opened, updated, reopened, or its title or description edited | the `commits` job checks every commit's subject and sign-off and the pull request title, which becomes the squash commit's subject. A workflow of its own, so editing a pull request re-runs only this check. |
 | `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner over the pinned requirement files, `pip-audit`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
-| `publish.yml` | a version tag, or a manual run | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test. A manual run (Actions → publish → Run workflow) uploads nothing: its `publisher-check` job only confirms that PyPI accepts this workflow's OIDC token, after approval in the `release` environment. |
+| `publish.yml` | a version tag, or a manual run | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test; for a final release, the GitHub release is then created with the version's CHANGELOG section as notes. A manual run (Actions → publish → Run workflow) uploads nothing: its `publisher-check` job only confirms that PyPI accepts this workflow's OIDC token, after approval in the `release` environment. |
+| `tag.yml` | push to `main` touching `src/sdo/_version.py` or `CHANGELOG.md`, or a manual run | Creates the release tag when it does not exist yet: `vX.Y.Z` once `CHANGELOG.md` has a `## [X.Y.Z] - ` section, `vX.Y.Z-rc.N` for `X.Y.ZrcN`. The tag is created with a token of the `scrape-do-publisher` GitHub App, so it starts `publish.yml`. A manual run creates nothing: it reports the tag a push would create and checks that the App token can be minted. |
 | Dependabot | weekly | update pull requests for the GitHub Actions, taken only after a 7-day cooldown, and security-advisory pull requests for the pinned Python requirements, which the cooldown does not delay (version bumps of those are recompiled by hand with uv, see [Dev setup](#dev-setup)); each one runs the checks above. |
 
-Every job runs on GitHub-hosted runners except CodeQL and Scorecard, which run on the organisation's self-hosted runners: their uploads are GitHub API calls that the organisation's IP allow list only accepts from there. CodeQL runs there for same-repository events only, so a pull request from a fork is analysed once merged; Scorecard never runs on a pull request. Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
+Every job runs on GitHub-hosted runners except CodeQL, Scorecard, the `tag` job and the GitHub release job, which run on the organisation's self-hosted runners: their uploads and writes are GitHub API calls that the organisation's IP allow list only accepts from there. CodeQL runs there for same-repository events only, so a pull request from a fork is analysed once merged; Scorecard never runs on a pull request. Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
 
 ---
 
 ## Releasing
 
 Development is trunk-based: every change lands on `main` through a pull request
-with CI green. A release is a tag on `main`; `.github/workflows/publish.yml`
-checks it, builds once with the hash-pinned toolchain and publishes after
-approval:
+with CI green. A release is a tag on `main`. `.github/workflows/tag.yml`
+creates it when the release pull request lands, and
+`.github/workflows/publish.yml` checks it, builds once with the hash-pinned
+toolchain and publishes after approval:
 
 | Tag | `src/sdo/_version.py` | Channel | Environment |
 |-----|-----------------------|---------|-------------|
@@ -291,40 +293,28 @@ and `job_workflow_ref` with the table above.
    [X.Y.Z]: https://github.com/scrape-do/sdo-sdk-python/releases/tag/vX.Y.Z
    ```
 
-2. Squash-merge it once CI is green, then tag the merge commit on `main` with a
-   signed tag and push it:
-
-   ```sh
-   git switch main && git pull --ff-only
-   git tag -s vX.Y.Z -m vX.Y.Z
-   git push origin vX.Y.Z
-   ```
-
-   The organization's tag ruleset restricts creating `v*` tags, so only a
-   maintainer allowed to bypass it can push one; the push reports the bypass.
-
-3. `publish.yml` builds, then waits for approval in `release` (`prerelease` for
-   a candidate). Approve it under the run's **Review deployments**.
-4. The `smoke` job installs the version from the index and imports it. Check it
-   yourself in a clean environment too, with Python 3.11 or newer (an older
-   interpreter finds no installable version, `from versions: none`):
+2. Squash-merge it once CI is green. `tag.yml` then creates `vX.Y.Z` on the
+   merge commit (it skips a final version without its CHANGELOG section, and a
+   version whose tag exists). Nobody pushes a tag by hand; the "release tags"
+   ruleset lets only admins and the `scrape-do-publisher` App create `v*`
+   tags, and the App needs to stay installed on this repository with the org
+   secrets `PUBLISHER_APP_ID` and `PUBLISHER_APP_PRIVATE_KEY` shared with it.
+3. The tag starts `publish.yml`, which builds and then waits for approval in
+   `release` (`prerelease` for a candidate). Approve it under the run's
+   **Review deployments**.
+4. The `smoke` job installs the version from the index and imports it, and for
+   a final release `github-release` creates the GitHub release with the
+   version's CHANGELOG section as notes. To check the install yourself, use
+   Python 3.11 or newer (an older interpreter finds no installable version,
+   `from versions: none`):
 
    ```sh
    python3.12 -m venv /tmp/sdo-check && /tmp/sdo-check/bin/pip install sdo-client==X.Y.Z
    /tmp/sdo-check/bin/python -c "import sdo; print(sdo.__version__)"
    ```
 
-5. Create the GitHub release for the tag. The notes are an install line and
-   the version's CHANGELOG section, without its heading:
-
-   ```sh
-   v=X.Y.Z
-   { printf '```sh\npip install sdo-client==%s\n```\n\n' "$v"
-     awk -v h="## [$v]" 'index($0, h) == 1 {on=1; next} on && /^(## |\[Unreleased\]:)/ {exit} on' CHANGELOG.md
-   } > notes.md
-   gh release create vX.Y.Z --repo scrape-do/sdo-sdk-python --verify-tag \
-     --title vX.Y.Z --notes-file notes.md
-   ```
+If `tag.yml` cannot run, an admin can still tag by hand on `main`
+(`git tag -s vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`); the rest is the same.
 
 A version on PyPI can never be uploaded again, even after it is deleted, so a
 broken release is fixed with a new patch version (and the broken one yanked).

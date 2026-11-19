@@ -69,6 +69,27 @@ jobs:
         with:
           name: dist
           path: dist/
+      # Notes for the GitHub release: an install line and the version's
+      # CHANGELOG section without its heading (a candidate gets none).
+      - name: Write the release notes
+        if: steps.check.outputs.channel == 'live'
+        run: |
+          set -euo pipefail
+          v="${GITHUB_REF_NAME#v}"
+          mkdir -p "$RUNNER_TEMP/release-notes"
+          # shellcheck disable=SC2016 # the backticks are Markdown, not a substitution
+          { printf '```sh\npip install sdo-client==%s\n```\n\n' "$v"
+            awk -v h="## [$v]" 'index($0, h) == 1 {on=1; next} on && /^(## |\[Unreleased\]:)/ {exit} on' CHANGELOG.md
+          } > "$RUNNER_TEMP/release-notes/notes.md"
+          if [ "$(grep -c . "$RUNNER_TEMP/release-notes/notes.md")" -le 3 ]; then
+            echo "::error::CHANGELOG.md has no '## [$v]' section for the release notes"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.check.outputs.channel == 'live'
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes/notes.md
 
   publish-test:
     needs: build
@@ -184,3 +205,48 @@ jobs:
           PY
           rm -f mint.json
           [ "$code" = "200" ]
+
+  # Once a final release installs from PyPI, create the GitHub release for its
+  # tag with the notes the build job wrote. Release candidates get none. On the
+  # org's self-hosted runners, because the org's IP allow list rejects GitHub
+  # API calls from GitHub-hosted runners; it checks out and runs no repository
+  # code.
+  github-release:
+    needs: [build, smoke]
+    # always(): smoke's own needs include a skipped publish job.
+    if: ${{ always() && needs.build.outputs.channel == 'live' && needs.smoke.result == 'success' }}
+    runs-on: self-hosted
+    permissions:
+      contents: write             # create the GitHub release
+    steps:
+      # A persistent runner keeps its temp directory between runs.
+      - name: Start without old notes
+        run: rm -rf "$RUNNER_TEMP/release-notes"
+      # The self-hosted runners do not ship the GitHub CLI: install a pinned,
+      # checksum-verified release.
+      - name: Install gh
+        env:
+          GH_VERSION: 2.102.0
+          GH_SHA256: bb766f710eef8ede859c18578c72c327597cd4c8a85b06001b1f3843c6019386
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 5 --retry-delay 10 --retry-all-errors -o "$RUNNER_TEMP/gh.tar.gz" \
+            "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_amd64.tar.gz"
+          echo "${GH_SHA256}  $RUNNER_TEMP/gh.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/gh.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/gh_${GH_VERSION}_linux_amd64/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/release-notes
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::the GitHub release $GITHUB_REF_NAME already exists."
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes/notes.md"

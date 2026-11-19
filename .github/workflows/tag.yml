@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: Apache-2.0
+# Tags a release once its release PR is on main, so nobody pushes tags by hand.
+#
+# On every push to main that touches the version or the changelog, `plan`
+# reads src/sdo/_version.py and picks the tag:
+#   X.Y.Z    -> vX.Y.Z       only when CHANGELOG.md has a `## [X.Y.Z] - ` section
+#   X.Y.ZrcN -> vX.Y.Z-rc.N
+# If that tag does not exist yet, `tag` creates it on the pushed commit. The
+# tag starts publish.yml, which still waits for approval in the `release` (or
+# `prerelease`) environment before anything is uploaded.
+#
+# The tag is created with a token of the scrape-do-publisher GitHub App,
+# limited to contents: write on this repository and revoked when the job ends:
+# a tag created with GITHUB_TOKEN would not start publish.yml, and the "release
+# tags" ruleset lets only admins and this App create `v*` tags. `tag` runs on
+# the org's self-hosted runners, because the org's IP allow list rejects GitHub
+# API calls from GitHub-hosted runners; it checks out and runs no repository
+# code.
+name: tag
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/sdo/_version.py
+      - CHANGELOG.md
+  # Manual run: reports what a push would do and checks that the App token can
+  # be minted, without creating a tag.
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: tag
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.repository_owner == 'scrape-do'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Work out the tag for this version
+        id: plan
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/sdo/_version.py)"
+          if [[ "$version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)rc([0-9]+)$ ]]; then
+            tag="v${BASH_REMATCH[1]}-rc.${BASH_REMATCH[2]}"
+          elif [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            tag="v${version}"
+            if ! grep -q "^## \[${version}\] - " CHANGELOG.md; then
+              echo "::notice::CHANGELOG.md has no '## [${version}] - ' section yet; not tagging ${tag}."
+              exit 0
+            fi
+          else
+            echo "::error::src/sdo/_version.py has '${version}', which is neither X.Y.Z nor X.Y.ZrcN"
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+  tag:
+    needs: plan
+    if: needs.plan.outputs.tag != ''
+    runs-on: self-hosted
+    permissions: {} # writes with the App's token, never with GITHUB_TOKEN
+    steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.PUBLISHER_APP_ID }}
+          private-key: ${{ secrets.PUBLISHER_APP_PRIVATE_KEY }}
+          owner: scrape-do
+          repositories: sdo-sdk-python
+          permission-contents: write
+      - name: Create the tag unless it exists
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/git"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json")
+          code="$(curl -sS -o /dev/null -w '%{http_code}' "${auth[@]}" "${api}/ref/tags/${TAG}")"
+          case "$code" in
+            200) echo "::notice::${TAG} already exists; nothing to tag."; exit 0 ;;
+            404) ;;
+            *) echo "::error::looking up ${TAG} returned HTTP ${code}"; exit 1 ;;
+          esac
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo "::notice::a push would tag ${GITHUB_SHA} as ${TAG} (manual run: not tagging)."
+            exit 0
+          fi
+          # TAG matched a strict version pattern in `plan`, so it is safe inside JSON.
+          curl -sSf -o /dev/null "${auth[@]}" -X POST "${api}/refs" \
+            -d "{\"ref\":\"refs/tags/${TAG}\",\"sha\":\"${GITHUB_SHA}\"}"
+          echo "::notice::tagged ${GITHUB_SHA} as ${TAG}; publish.yml now waits for approval."
