@@ -14,15 +14,9 @@ name: publish
 on:
   push:
     tags: ["v*"]
-  # Manual run: checks the trusted-publisher token exchange for this workflow
-  # without uploading anything (see the publisher-check job).
+  # Manual run: checks the PyPI trusted-publisher token exchange for this
+  # workflow without uploading anything (see the publisher-check job).
   workflow_dispatch:
-    inputs:
-      index:
-        description: Index to check against
-        type: choice
-        options: [testpypi, pypi]
-        default: testpypi
 
 permissions: {}
 
@@ -146,22 +140,20 @@ jobs:
           echo "::error::sdo-client==${SDO_EXPECTED_VERSION} never became installable"
           exit 1
 
-  # `workflow_dispatch` only: asks the chosen index to exchange this job's OIDC
-  # token for an upload token, the same exchange the publish action performs,
-  # and prints the claims the index matches against and its answer. Nothing is
-  # uploaded and a minted token is never printed (it expires on its own). On
-  # an index with a pending publisher, a successful exchange creates the empty
-  # project, as the first upload would.
+  # `workflow_dispatch` only: asks PyPI to exchange this job's OIDC token for an
+  # upload token, the same exchange the publish action performs, and prints the
+  # claims PyPI matches against and its answer. Nothing is uploaded and a
+  # minted token is never printed (it expires on its own).
   publisher-check:
     if: github.repository_owner == 'scrape-do' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: ${{ inputs.index == 'pypi' && 'release' || 'prerelease' }}
+    environment: release
     permissions:
       id-token: write
     steps:
-      - name: Exchange the GitHub OIDC token with the index
+      - name: Exchange the GitHub OIDC token with PyPI
         env:
-          INDEX_HOST: ${{ inputs.index == 'pypi' && 'pypi.org' || 'test.pypi.org' }}
+          INDEX_HOST: pypi.org
         run: |
           set -euo pipefail
           audience="$(curl -sSf "https://${INDEX_HOST}/_/oidc/audience" \
