@@ -212,7 +212,7 @@ This repository is public. Practically, for you as a contributor, this means: ke
 | `ci.yml` | every push to `main` and every pull request | `ruff` lint and format check; `mypy --strict`; the test suite with the 99% line + branch coverage floor on Python 3.11–3.14 (Linux), plus macOS and Windows on 3.13, including the cross-language conformance suite and its integrity check; the public-API snapshot (`api-surface.txt`) must be up to date; CodeQL code scanning. |
 | `commits.yml` | every pull request: opened, updated, reopened, or its title or description edited | the `commits` job checks every commit's subject and sign-off and the pull request title, which becomes the squash commit's subject. A workflow of its own, so editing a pull request re-runs only this check. |
 | `security.yml` | push to `main`, pull requests, and weekly | secret scanning over the full git history (gitleaks), OSV-Scanner over the pinned requirement files, `pip-audit`, and an SBOM uploaded as a build artifact. OpenSSF Scorecard runs on pushes to `main` and weekly, with results in code scanning. |
-| `publish.yml` | a version tag, or a manual run | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test. A manual run (Actions → publish → Run workflow, index `testpypi` or `pypi`) uploads nothing: its `publisher-check` job only confirms that the index accepts this workflow's OIDC token, after approval in the matching environment. |
+| `publish.yml` | a version tag, or a manual run | A tag `vX.Y.Z-rc.N` publishes a release candidate to **TestPyPI**; a tag `vX.Y.Z` publishes to **PyPI**. The tag must be on `main` and match `src/sdo/_version.py` (`X.Y.ZrcN` for a candidate). The package is built once with hash-pinned tooling, checked with `twine check`, published by trusted publishing (no stored token) after approval in the `prerelease` or `release` environment, and then installed from the index as a smoke test. A manual run (Actions → publish → Run workflow) uploads nothing: its `publisher-check` job only confirms that PyPI accepts this workflow's OIDC token, after approval in the `release` environment. |
 | Dependabot | weekly | update pull requests for the GitHub Actions, taken only after a 7-day cooldown, and security-advisory pull requests for the pinned Python requirements, which the cooldown does not delay (version bumps of those are recompiled by hand with uv, see [Dev setup](#dev-setup)); each one runs the checks above. |
 
 Every job runs on GitHub-hosted runners except CodeQL and Scorecard, which run on the organisation's self-hosted runners: their uploads are GitHub API calls that the organisation's IP allow list only accepts from there. CodeQL runs there for same-repository events only, so a pull request from a fork is analysed once merged; Scorecard never runs on a pull request. Every action is pinned to a full commit SHA and every job declares least-privilege `permissions:`. Publishing never happens outside the `scrape-do` organisation, never from a commit that is not on `main`, and never without a maintainer's approval.
@@ -260,21 +260,22 @@ so it accepts it (unlike npm, see `sdo-sdk-js`), and no token fallback is needed
 
 ### Checking a publisher without uploading
 
-A manual run of `publish.yml` performs only the token exchange (the
-`publisher-check` job) and prints the claims the index matched and its answer.
-The environments accept only `v*` tags, so allow `main` for the duration of the
-run and remove the rule afterwards:
+A manual run of `publish.yml` performs only the PyPI token exchange (the
+`publisher-check` job) and prints the claims PyPI matched and its answer. There
+is no such check for TestPyPI. The `release` environment accepts only `v*`
+tags, so allow `main` for the duration of the run and remove the rule
+afterwards:
 
 ```sh
-env=prerelease   # or release, for index=pypi
+env=release
 id=$(gh api -X POST "repos/scrape-do/sdo-sdk-python/environments/$env/deployment-branch-policies" \
   -f name=main -f type=branch --jq .id)
-gh workflow run publish.yml --repo scrape-do/sdo-sdk-python --ref main -f index=testpypi   # or pypi
+gh workflow run publish.yml --repo scrape-do/sdo-sdk-python --ref main
 # approve the run in the environment, wait for it to finish, then:
 gh api -X DELETE "repos/scrape-do/sdo-sdk-python/environments/$env/deployment-branch-policies/$id"
 ```
 
-`HTTP 200` means the index accepts the workflow. `invalid-publisher` means no
+`HTTP 200` means PyPI accepts the workflow. `invalid-publisher` means no
 publisher matches the claims: compare the printed `repository`, `environment`
 and `job_workflow_ref` with the table above.
 
